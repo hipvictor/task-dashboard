@@ -322,7 +322,33 @@
       border-radius: 12px;
       font-size: 0.8125rem;
       margin-bottom: 0.5rem;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+    }
+
+    .alert-dismiss {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.875rem;
+      padding: 0 0.25rem;
+      opacity: 0.5;
+      transition: opacity 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .alert-dismiss:hover {
+      opacity: 1;
+    }
+
+    .alert.dismissing {
+      opacity: 0;
+      transform: translateX(20px);
+      max-height: 0;
+      padding: 0 0.875rem;
+      margin-bottom: 0;
+      overflow: hidden;
     }
 
     .alert-overdue {
@@ -1262,32 +1288,61 @@
     `;
   }
 
+  function getDismissedAlerts() {
+    try {
+      const stored = localStorage.getItem('dismissed-alerts');
+      if (!stored) return {};
+      const parsed = JSON.parse(stored);
+      const today = new Date().toISOString().split('T')[0];
+      // Only keep dismissals from today — everything else reappears
+      const filtered = {};
+      for (const [key, date] of Object.entries(parsed)) {
+        if (date === today) filtered[key] = date;
+      }
+      return filtered;
+    } catch { return {}; }
+  }
+
+  function dismissAlert(key, el) {
+    el.classList.add('dismissing');
+    const dismissed = getDismissedAlerts();
+    dismissed[key] = new Date().toISOString().split('T')[0];
+    localStorage.setItem('dismissed-alerts', JSON.stringify(dismissed));
+    setTimeout(() => el.remove(), 300);
+  }
+
   function renderAlerts() {
     const bar = document.getElementById('alerts-bar');
     const alerts = [];
+    const dismissed = getDismissedAlerts();
 
     allTasks.forEach(t => {
       if (t.status === 'done') return;
       if (t.due_date) {
         const days = daysUntil(t.due_date);
         if (days < 0) {
-          alerts.push({ type: 'overdue', text: `Overdue: ${t.name} (${Math.abs(days)} days ago)` });
+          alerts.push({ type: 'overdue', key: `overdue-${t.id}`, text: `Overdue: ${t.name} (${Math.abs(days)} days ago)` });
         } else if (days <= 3) {
-          alerts.push({ type: 'due-soon', text: `Due ${days === 0 ? 'today' : `in ${days} day${days > 1 ? 's' : ''}`}: ${t.name}` });
+          alerts.push({ type: 'due-soon', key: `due-${t.id}`, text: `Due ${days === 0 ? 'today' : `in ${days} day${days > 1 ? 's' : ''}`}: ${t.name}` });
         }
       }
       if (t.status === 'shelf' && t.defer_date) {
         const deferDays = daysUntil(t.defer_date);
         if (deferDays >= -1 && deferDays <= 7) {
-          alerts.push({ type: 'surfaced', text: deferDays > 0
+          alerts.push({ type: 'surfaced', key: `deferred-${t.id}`, text: deferDays > 0
             ? `${t.name} begins in ${deferDays} day${deferDays > 1 ? 's' : ''}`
             : `${t.name} starts today. Move to bench?` });
         }
       }
     });
 
-    bar.innerHTML = alerts.map(a =>
-      `<div class="alert alert-${a.type}">${a.type === 'overdue' ? '🔴' : a.type === 'due-soon' ? '🟡' : '🔵'} ${escapeHTML(a.text)}</div>`
+    const visible = alerts.filter(a => !dismissed[a.key]);
+
+    bar.innerHTML = visible.map(a =>
+      `<div class="alert alert-${a.type}">
+        <span>${a.type === 'overdue' ? '🔴' : a.type === 'due-soon' ? '🟡' : '🔵'} ${escapeHTML(a.text)}</span>
+        <button class="alert-dismiss" onclick="dismissAlert('${a.key}', this.closest('.alert'))" title="Dismiss for today">✕</button>
+      </div>`
     ).join('');
   }
 
