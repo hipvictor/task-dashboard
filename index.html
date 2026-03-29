@@ -717,6 +717,10 @@
   // ── Supabase Init ──
   const SUPABASE_URL = 'https://epdxkvohrclpqnlagkwv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHhrdm9ocmNscHFubGFna3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NTA3NDYsImV4cCI6MjA5MDMyNjc0Nn0.l9A8VlNFQw0kWgBLS0Cvo9CU6WEzHZS5OcLmBLz7CDI';
+
+  if (!window.supabase) {
+    document.getElementById('login-error').textContent = 'Supabase library failed to load. Check network.';
+  }
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let allTasks = [];
@@ -736,13 +740,19 @@
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     const errorEl = document.getElementById('login-error');
-    errorEl.textContent = '';
+    errorEl.textContent = 'Signing in...';
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      errorEl.textContent = error.message;
-    } else {
-      showDashboard();
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        errorEl.textContent = error.message;
+      } else if (data && data.session) {
+        showDashboard();
+      } else {
+        errorEl.textContent = 'No session returned. Check Supabase config.';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Error: ' + e.message;
     }
   }
 
