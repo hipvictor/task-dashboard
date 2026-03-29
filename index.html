@@ -594,8 +594,15 @@
     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
     <button onclick="handleLogin()">Sign In</button>
     <div class="login-error" id="login-error"></div>
+    <div id="debug-info" style="margin-top:1rem;font-size:0.7rem;color:#64748b;text-align:left;word-break:break-all;"></div>
   </div>
 </div>
+
+<script>
+  // Inline debug — runs immediately to check CDN load
+  const dbg = document.getElementById('debug-info');
+  dbg.textContent = 'v5 | supabase CDN: ' + (typeof window.supabase) + ' | createClient: ' + (typeof window.supabase?.createClient);
+</script>
 
 <!-- ── Dashboard ── -->
 <div id="dashboard">
