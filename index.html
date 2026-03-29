@@ -1,43 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="ember">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Task Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --surface-hover: #334155;
-      --border: #334155;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --danger: #ef4444;
-      --warning: #f59e0b;
-      --success: #22c55e;
-      --purple: #8b5cf6;
+      --bg: #1a1816;
+      --surface: #242220;
+      --surface-hover: #2e2b28;
+      --border: #3a3632;
+      --text: #e8e4df;
+      --text-muted: #9a9490;
+      --accent: #c4956a;
+      --accent-hover: #d4a57a;
+      --danger: #d9534f;
+      --warning: #e8a838;
+      --success: #5cb85c;
+      --purple: #a68bc1;
+      --shadow: rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="stone"] {
+      --bg: #1c1d1f;
+      --surface: #26272a;
+      --surface-hover: #303235;
+      --border: #383a3e;
+      --text: #e0e0e0;
+      --text-muted: #888888;
+      --accent: #8da4bf;
+      --accent-hover: #9bb3ce;
+      --danger: #d9534f;
+      --warning: #e8a838;
+      --success: #5cb85c;
+      --purple: #9896b9;
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+
+    [data-theme="forest"] {
+      --bg: #161c18;
+      --surface: #1e2620;
+      --surface-hover: #26322a;
+      --border: #2e3a30;
+      --text: #dce4df;
+      --text-muted: #8fa090;
+      --accent: #7db88a;
+      --accent-hover: #8dc999;
+      --danger: #d9534f;
+      --warning: #e8a838;
+      --success: #5cb85c;
+      --purple: #95b89f;
+      --shadow: rgba(0, 0, 0, 0.35);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
       min-height: 100vh;
     }
 
-    /* ── Login Screen ── */
     #login-screen {
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
       padding: 1rem;
+      background: linear-gradient(135deg, var(--bg) 0%, var(--surface) 100%);
     }
 
     .login-box {
@@ -47,12 +81,14 @@
       padding: 2rem;
       width: 100%;
       max-width: 360px;
+      box-shadow: 0 2px 8px var(--shadow);
     }
 
     .login-box h1 {
       font-size: 1.25rem;
       margin-bottom: 1.5rem;
       text-align: center;
+      font-weight: 700;
     }
 
     .login-box input {
@@ -63,7 +99,9 @@
       border-radius: 8px;
       color: var(--text);
       font-size: 0.875rem;
+      font-family: 'Inter', system-ui, sans-serif;
       margin-bottom: 0.75rem;
+      transition: border-color 0.2s ease;
     }
 
     .login-box input:focus {
@@ -74,7 +112,7 @@
     .login-box button {
       width: 100%;
       padding: 0.625rem;
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
       color: white;
       border: none;
       border-radius: 8px;
@@ -82,9 +120,12 @@
       font-weight: 600;
       cursor: pointer;
       margin-top: 0.5rem;
+      transition: transform 0.2s ease;
     }
 
-    .login-box button:hover { background: var(--accent-hover); }
+    .login-box button:hover {
+      transform: translateY(-1px);
+    }
 
     .login-error {
       color: var(--danger);
@@ -94,7 +135,6 @@
       min-height: 1.2rem;
     }
 
-    /* ── Dashboard Layout ── */
     #dashboard { display: none; }
 
     .header {
@@ -105,7 +145,10 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .header h1 { font-size: 1.125rem; font-weight: 600; }
+    .header h1 {
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
 
     .header-right {
       display: flex;
@@ -113,7 +156,41 @@
       gap: 1rem;
     }
 
-    .header-date { color: var(--text-muted); font-size: 0.875rem; }
+    .header-date {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .theme-picker {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .theme-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--surface);
+    }
+
+    .theme-btn:hover {
+      border-color: var(--accent);
+      transform: scale(1.1);
+    }
+
+    .theme-btn.ember { background: linear-gradient(135deg, #1a1816, #c4956a); }
+    .theme-btn.stone { background: linear-gradient(135deg, #1c1d1f, #8da4bf); }
+    .theme-btn.forest { background: linear-gradient(135deg, #161c18, #7db88a); }
+
+    .theme-btn.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 6px rgba(196, 149, 106, 0.4);
+    }
 
     .btn-logout {
       background: none;
@@ -123,9 +200,15 @@
       border-radius: 6px;
       font-size: 0.75rem;
       cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
     }
 
-    .btn-logout:hover { border-color: var(--text-muted); color: var(--text); }
+    .btn-logout:hover {
+      border-color: var(--text-muted);
+      color: var(--text);
+      background: var(--surface-hover);
+    }
 
     .main {
       display: grid;
@@ -136,10 +219,30 @@
       min-height: calc(100vh - 57px);
     }
 
-    .left-col { padding: 1.25rem; border-right: 1px solid var(--border); }
-    .right-col { padding: 1.25rem; }
+    .left-col {
+      padding: 1.25rem;
+      border-right: 1px solid var(--border);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
 
-    /* ── Alerts ── */
+    .left-col-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .left-col-bottom {
+      margin-top: auto;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .right-col {
+      padding: 1.25rem;
+      overflow-y: auto;
+    }
+
     .alerts-bar {
       margin-bottom: 1.25rem;
     }
@@ -149,16 +252,27 @@
       align-items: center;
       gap: 0.5rem;
       padding: 0.625rem 0.875rem;
-      border-radius: 8px;
+      border-radius: 12px;
       font-size: 0.8125rem;
       margin-bottom: 0.5rem;
+      transition: all 0.2s ease;
     }
 
-    .alert-overdue { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
-    .alert-due-soon { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
-    .alert-surfaced { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); }
+    .alert-overdue {
+      background: rgba(217, 83, 79, 0.15);
+      border: 1px solid rgba(217, 83, 79, 0.3);
+    }
 
-    /* ── Sections ── */
+    .alert-due-soon {
+      background: rgba(232, 168, 56, 0.15);
+      border: 1px solid rgba(232, 168, 56, 0.3);
+    }
+
+    .alert-surfaced {
+      background: rgba(196, 149, 106, 0.15);
+      border: 1px solid rgba(196, 149, 106, 0.3);
+    }
+
     .section {
       margin-bottom: 1.5rem;
     }
@@ -186,7 +300,6 @@
       border-radius: 10px;
     }
 
-    /* ── Task Items ── */
     .task {
       display: flex;
       align-items: flex-start;
@@ -196,10 +309,14 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       margin-bottom: 0.375rem;
-      transition: background 0.15s;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px var(--shadow);
     }
 
-    .task:hover { background: var(--surface-hover); }
+    .task:hover {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
 
     .task-checkbox {
       width: 18px;
@@ -209,13 +326,16 @@
       cursor: pointer;
       flex-shrink: 0;
       margin-top: 2px;
-      transition: all 0.15s;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    .task-checkbox:hover { border-color: var(--success); }
+    .task-checkbox:hover {
+      border-color: var(--success);
+      box-shadow: 0 0 4px rgba(92, 184, 92, 0.3);
+    }
 
     .task-checkbox.checked {
       background: var(--success);
@@ -229,7 +349,10 @@
       font-weight: bold;
     }
 
-    .task-content { flex: 1; min-width: 0; }
+    .task-content {
+      flex: 1;
+      min-width: 0;
+    }
 
     .task-name {
       font-size: 0.875rem;
@@ -252,23 +375,40 @@
       font-size: 0.6875rem;
       padding: 0.0625rem 0.375rem;
       border-radius: 4px;
-      background: rgba(59, 130, 246, 0.15);
+      background: rgba(196, 149, 106, 0.15);
       color: var(--accent);
     }
 
-    .tag.project { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
-    .tag.home { background: rgba(34, 197, 94, 0.15); color: var(--success); }
-    .tag.due { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-    .tag.overdue { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .tag.project {
+      background: rgba(166, 139, 193, 0.15);
+      color: var(--purple);
+    }
+
+    .tag.home {
+      background: rgba(92, 184, 92, 0.15);
+      color: var(--success);
+    }
+
+    .tag.due {
+      background: rgba(232, 168, 56, 0.15);
+      color: var(--warning);
+    }
+
+    .tag.overdue {
+      background: rgba(217, 83, 79, 0.15);
+      color: var(--danger);
+    }
 
     .task-actions {
       display: flex;
       gap: 0.25rem;
       opacity: 0;
-      transition: opacity 0.15s;
+      transition: opacity 0.2s ease;
     }
 
-    .task:hover .task-actions { opacity: 1; }
+    .task:hover .task-actions {
+      opacity: 1;
+    }
 
     .task-action-btn {
       background: none;
@@ -278,11 +418,14 @@
       padding: 0.25rem;
       font-size: 0.75rem;
       border-radius: 4px;
+      transition: all 0.2s ease;
     }
 
-    .task-action-btn:hover { background: var(--surface-hover); color: var(--text); }
+    .task-action-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
 
-    /* ── Collapsible ── */
     .collapsible-header {
       cursor: pointer;
       user-select: none;
@@ -290,21 +433,26 @@
 
     .collapsible-header .arrow {
       display: inline-block;
-      transition: transform 0.2s;
+      transition: transform 0.2s ease;
       margin-right: 0.25rem;
       font-size: 0.75rem;
     }
 
-    .collapsible-header.open .arrow { transform: rotate(90deg); }
+    .collapsible-header.open .arrow {
+      transform: rotate(90deg);
+    }
 
-    .collapsible-body { display: none; }
-    .collapsible-body.open { display: block; }
+    .collapsible-body {
+      display: none;
+    }
 
-    /* ── Quick Add ── */
+    .collapsible-body.open {
+      display: block;
+    }
+
     .quick-add {
       display: flex;
       gap: 0.5rem;
-      margin-bottom: 1.25rem;
     }
 
     .quick-add input {
@@ -315,9 +463,14 @@
       border-radius: 8px;
       color: var(--text);
       font-size: 0.875rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      transition: all 0.2s ease;
     }
 
-    .quick-add input:focus { outline: none; border-color: var(--accent); }
+    .quick-add input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
 
     .quick-add select {
       padding: 0.625rem 0.5rem;
@@ -326,11 +479,18 @@
       border-radius: 8px;
       color: var(--text);
       font-size: 0.8125rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      transition: all 0.2s ease;
+    }
+
+    .quick-add select:focus {
+      outline: none;
+      border-color: var(--accent);
     }
 
     .quick-add button {
       padding: 0.625rem 1rem;
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
       color: white;
       border: none;
       border-radius: 8px;
@@ -338,11 +498,13 @@
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
+      transition: all 0.2s ease;
     }
 
-    .quick-add button:hover { background: var(--accent-hover); }
+    .quick-add button:hover {
+      transform: translateY(-1px);
+    }
 
-    /* ── Right Column ── */
     .right-section {
       margin-bottom: 1.5rem;
     }
@@ -362,14 +524,15 @@
       font-size: 0.8125rem;
     }
 
-    .goal-item:last-child { border-bottom: none; }
+    .goal-item:last-child {
+      border-bottom: none;
+    }
 
     .goal-label {
       font-weight: 600;
       color: var(--accent);
     }
 
-    /* ── Agenda View ── */
     .agenda-scroll {
       max-height: 320px;
       overflow-y: auto;
@@ -392,7 +555,9 @@
       z-index: 2;
     }
 
-    .agenda-day-label:first-child { margin-top: 0; }
+    .agenda-day-label:first-child {
+      margin-top: 0;
+    }
 
     .agenda-event {
       display: flex;
@@ -403,25 +568,27 @@
       padding-left: 0.75rem;
       font-size: 0.8125rem;
       align-items: flex-start;
-      transition: opacity 0.3s;
+      transition: all 0.2s ease;
     }
 
     .agenda-event.past {
-      opacity: 0.4;
+      opacity: 0.45;
       border-left-color: var(--border);
     }
 
     .agenda-event.current {
-      border-left-color: var(--accent);
-      border-left-width: 3px;
+      border-left: 3px solid var(--accent);
       padding-left: calc(0.75rem - 1px);
+      background: rgba(196, 149, 106, 0.08);
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+      margin: 0.25rem 0;
     }
 
     .agenda-event.upcoming {
       border-left-color: var(--text-muted);
     }
 
-    /* Now marker */
     .agenda-now-marker {
       display: flex;
       align-items: center;
@@ -439,6 +606,7 @@
       border-radius: 50%;
       flex-shrink: 0;
       margin-left: -5px;
+      box-shadow: 0 0 4px var(--danger);
     }
 
     .agenda-now-marker::after {
@@ -499,12 +667,12 @@
       padding: 0.5rem 0;
     }
 
-    /* ── Coaching Card ── */
     .coaching-card {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(139, 92, 246, 0.06));
-      border: 1px solid rgba(59, 130, 246, 0.12);
+      background: linear-gradient(135deg, rgba(196, 149, 106, 0.08), rgba(166, 139, 193, 0.08));
+      border: 1px solid rgba(196, 149, 106, 0.12);
       border-radius: 10px;
       padding: 0.875rem 1rem;
+      box-shadow: 0 1px 3px var(--shadow);
     }
 
     .coaching-text {
@@ -512,15 +680,15 @@
       line-height: 1.55;
       color: var(--text-muted);
       font-style: italic;
+      font-weight: 300;
     }
 
     .coaching-source {
       font-size: 0.6875rem;
-      color: rgba(148, 163, 184, 0.6);
+      color: rgba(154, 148, 144, 0.6);
       margin-top: 0.5rem;
     }
 
-    /* ── Status move dropdown ── */
     .move-menu {
       position: absolute;
       right: 0;
@@ -531,7 +699,7 @@
       padding: 0.25rem;
       z-index: 100;
       min-width: 140px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 12px var(--shadow);
     }
 
     .move-menu button {
@@ -545,13 +713,18 @@
       font-size: 0.8125rem;
       cursor: pointer;
       border-radius: 4px;
+      transition: all 0.2s ease;
+      font-family: 'Inter', system-ui, sans-serif;
     }
 
-    .move-menu button:hover { background: var(--surface-hover); }
+    .move-menu button:hover {
+      background: var(--surface-hover);
+    }
 
-    .task-actions-wrap { position: relative; }
+    .task-actions-wrap {
+      position: relative;
+    }
 
-    /* ── Filter bar ── */
     .filter-bar {
       display: flex;
       gap: 0.5rem;
@@ -565,9 +738,15 @@
       border-radius: 6px;
       color: var(--text-muted);
       font-size: 0.75rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      transition: all 0.2s ease;
     }
 
-    /* ── Loading ── */
+    .filter-bar select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
     .loading {
       text-align: center;
       color: var(--text-muted);
@@ -575,18 +754,24 @@
       font-size: 0.875rem;
     }
 
-    /* ── Mobile ── */
     @media (max-width: 768px) {
       .main {
         grid-template-columns: 1fr;
       }
-      .left-col { border-right: none; border-bottom: 1px solid var(--border); }
+
+      .left-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .theme-picker {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
 
-<!-- ── Login Screen ── -->
 <div id="login-screen">
   <div class="login-box">
     <h1>Task Dashboard</h1>
@@ -594,99 +779,92 @@
     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
     <button onclick="handleLogin()">Sign In</button>
     <div class="login-error" id="login-error"></div>
-    <div id="debug-info" style="margin-top:1rem;font-size:0.7rem;color:#64748b;text-align:left;word-break:break-all;"></div>
   </div>
 </div>
 
-<script>
-  // Inline debug — runs immediately to check CDN load
-  const dbg = document.getElementById('debug-info');
-  dbg.textContent = 'v5 | supabase CDN: ' + (typeof window.supabase) + ' | createClient: ' + (typeof window.supabase?.createClient);
-</script>
-
-<!-- ── Dashboard ── -->
 <div id="dashboard">
   <div class="header">
     <h1>Task Dashboard</h1>
     <div class="header-right">
-      <span class="header-date" id="header-date"></span>
+      <div class="header-date" id="header-date"></div>
+      <div class="theme-picker">
+        <button class="theme-btn ember active" onclick="setTheme('ember')" title="Ember theme"></button>
+        <button class="theme-btn stone" onclick="setTheme('stone')" title="Stone theme"></button>
+        <button class="theme-btn forest" onclick="setTheme('forest')" title="Forest theme"></button>
+      </div>
       <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
     </div>
   </div>
 
   <div class="main">
     <div class="left-col">
-      <!-- Alerts -->
-      <div class="alerts-bar" id="alerts-bar"></div>
+      <div class="left-col-content">
+        <div class="alerts-bar" id="alerts-bar"></div>
 
-      <!-- Quick Add -->
-      <div class="quick-add">
-        <input type="text" id="quick-add-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')handleQuickAdd()">
-        <select id="quick-add-pool">
-          <option value="inbox">Inbox</option>
-          <option value="bench">Bench</option>
-          <option value="shelf">Shelf</option>
-          <option value="deferred">Deferred</option>
-          <option value="someday">Someday</option>
-        </select>
-        <button onclick="handleQuickAdd()">Add</button>
-      </div>
-
-      <!-- Filter bar -->
-      <div class="filter-bar">
-        <select id="filter-domain" onchange="renderTasks()">
-          <option value="all">All domains</option>
-          <option value="work">Work</option>
-          <option value="home">Home</option>
-        </select>
-        <select id="filter-project" onchange="renderTasks()">
-          <option value="all">All projects</option>
-        </select>
-      </div>
-
-      <!-- Bench -->
-      <div class="section" id="bench-section">
-        <div class="section-header">
-          <span class="section-title">🎯 Bench</span>
-          <span class="section-count" id="bench-count">0</span>
+        <div class="section" id="bench-section">
+          <div class="section-header">
+            <span class="section-title">🎯 Bench</span>
+            <span class="section-count" id="bench-count">0</span>
+          </div>
+          <div id="bench-tasks"></div>
         </div>
-        <div id="bench-tasks"></div>
-      </div>
 
-      <!-- Inbox -->
-      <div class="section" id="inbox-section">
-        <div class="section-header">
-          <span class="section-title">📥 Inbox</span>
-          <span class="section-count" id="inbox-count">0</span>
+        <div class="section" id="inbox-section">
+          <div class="section-header">
+            <span class="section-title">📥 Inbox</span>
+            <span class="section-count" id="inbox-count">0</span>
+          </div>
+          <div id="inbox-tasks"></div>
         </div>
-        <div id="inbox-tasks"></div>
-      </div>
 
-      <!-- Shelf (collapsible) -->
-      <div class="section" id="shelf-section">
-        <div class="section-header collapsible-header" onclick="toggleCollapsible('shelf')">
-          <span class="section-title"><span class="arrow" id="shelf-arrow">▸</span> 📦 Shelf</span>
-          <span class="section-count" id="shelf-count">0</span>
+        <div class="section" id="shelf-section">
+          <div class="section-header collapsible-header" onclick="toggleCollapsible('shelf')">
+            <span class="section-title"><span class="arrow" id="shelf-arrow">▸</span> 📦 Shelf</span>
+            <span class="section-count" id="shelf-count">0</span>
+          </div>
+          <div class="collapsible-body" id="shelf-body">
+            <div id="shelf-tasks"></div>
+          </div>
         </div>
-        <div class="collapsible-body" id="shelf-body">
-          <div id="shelf-tasks"></div>
+
+        <div class="section" id="someday-section">
+          <div class="section-header collapsible-header" onclick="toggleCollapsible('someday')">
+            <span class="section-title"><span class="arrow" id="someday-arrow">▸</span> 💭 Someday / Maybe</span>
+            <span class="section-count" id="someday-count">0</span>
+          </div>
+          <div class="collapsible-body" id="someday-body">
+            <div id="someday-tasks"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Someday / Maybe (collapsible) -->
-      <div class="section" id="someday-section">
-        <div class="section-header collapsible-header" onclick="toggleCollapsible('someday')">
-          <span class="section-title"><span class="arrow" id="someday-arrow">▸</span> 💭 Someday / Maybe</span>
-          <span class="section-count" id="someday-count">0</span>
+      <div class="left-col-bottom">
+        <div class="filter-bar">
+          <select id="filter-domain" onchange="renderTasks()">
+            <option value="all">All domains</option>
+            <option value="work">Work</option>
+            <option value="home">Home</option>
+          </select>
+          <select id="filter-project" onchange="renderTasks()">
+            <option value="all">All projects</option>
+          </select>
         </div>
-        <div class="collapsible-body" id="someday-body">
-          <div id="someday-tasks"></div>
+
+        <div class="quick-add">
+          <input type="text" id="quick-add-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')handleQuickAdd()">
+          <select id="quick-add-pool">
+            <option value="inbox">Inbox</option>
+            <option value="bench">Bench</option>
+            <option value="shelf">Shelf</option>
+            <option value="deferred">Deferred</option>
+            <option value="someday">Someday</option>
+          </select>
+          <button onclick="handleQuickAdd()">Add</button>
         </div>
       </div>
     </div>
 
     <div class="right-col">
-      <!-- Today's Agenda -->
       <div class="right-section">
         <div class="right-section-title">📅 Agenda</div>
         <div class="agenda-scroll">
@@ -696,7 +874,6 @@
         </div>
       </div>
 
-      <!-- Sprint Goals -->
       <div class="right-section">
         <div class="right-section-title">🎯 Sprint Goals</div>
         <div id="goals-container">
@@ -706,12 +883,10 @@
         </div>
       </div>
 
-      <!-- Coaching reminder -->
       <div class="right-section">
         <div class="coaching-card" id="coaching-card"></div>
       </div>
 
-      <!-- Recently completed -->
       <div class="right-section">
         <div class="right-section-title">✅ Recently Completed</div>
         <div id="done-tasks"></div>
@@ -721,7 +896,6 @@
 </div>
 
 <script>
-  // ── Supabase Init ── v4
   const SUPABASE_URL = 'https://epdxkvohrclpqnlagkwv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHhrdm9ocmNscHFubGFna3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NTA3NDYsImV4cCI6MjA5MDMyNjc0Nn0.l9A8VlNFQw0kWgBLS0Cvo9CU6WEzHZS5OcLmBLz7CDI';
 
@@ -732,13 +906,21 @@
     document.getElementById('login-error').textContent = 'Supabase library failed to load: ' + e.message;
   }
 
-  // Version indicator
   console.log('Dashboard v4 loaded');
 
   let allTasks = [];
   let openMenu = null;
+  let currentTheme = 'ember';
 
-  // ── Auth ──
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    currentTheme = theme;
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelector(`.theme-btn.${theme}`).classList.add('active');
+  }
+
   async function checkAuth() {
     if (!sb) {
       document.getElementById('login-screen').style.display = 'flex';
@@ -792,25 +974,16 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
 
-    // Set date
     const now = new Date();
     const opts = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
     document.getElementById('header-date').textContent = now.toLocaleDateString('en-US', opts);
 
-    // Surface deferred tasks
     await surfaceDeferredTasks();
-
-    // Load tasks
     await loadTasks();
-
-    // Load agenda
     await loadAgenda();
-
-    // Coaching card
     renderCoachingCard();
   }
 
-  // ── Surfacing Logic ──
   async function surfaceDeferredTasks() {
     try {
       await sb.rpc('surface_deferred_tasks');
@@ -819,7 +992,6 @@
     }
   }
 
-  // ── Load Tasks ──
   async function loadTasks() {
     const { data, error } = await sb
       .from('tasks')
@@ -846,7 +1018,6 @@
     });
   }
 
-  // ── Render ──
   function getFilteredTasks(status) {
     const domain = document.getElementById('filter-domain').value;
     const project = document.getElementById('filter-project').value;
@@ -937,7 +1108,6 @@
           alerts.push({ type: 'due-soon', text: `Due ${days === 0 ? 'today' : `in ${days} day${days > 1 ? 's' : ''}`}: ${t.name}` });
         }
       }
-      // Recently surfaced from deferred
       if (t.status === 'shelf' && t.defer_date) {
         const deferDays = daysUntil(t.defer_date);
         if (deferDays >= -1 && deferDays <= 7) {
@@ -953,7 +1123,6 @@
     ).join('');
   }
 
-  // ── Actions ──
   async function toggleComplete(id, wasDone) {
     const newStatus = wasDone ? 'shelf' : 'done';
     const { error } = await sb
@@ -1006,7 +1175,6 @@
     }
   }
 
-  // ── UI Helpers ──
   function toggleCollapsible(id) {
     const body = document.getElementById(`${id}-body`);
     const arrow = document.getElementById(`${id}-arrow`);
@@ -1029,7 +1197,6 @@
 
   document.addEventListener('click', closeAllMenus);
 
-  // ── Utilities ──
   function daysUntil(dateStr) {
     const target = new Date(dateStr + 'T00:00:00');
     const now = new Date();
@@ -1047,7 +1214,6 @@
     return div.innerHTML;
   }
 
-  // ── Agenda ──
   async function loadAgenda() {
     const container = document.getElementById('agenda-container');
     const now = new Date();
@@ -1057,7 +1223,6 @@
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
-    // Query events for today and tomorrow
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
     const endOfTomorrow = new Date(tomorrow);
@@ -1082,7 +1247,6 @@
       return;
     }
 
-    // Split into today and tomorrow
     const tomorrowStart = new Date(tomorrow);
     tomorrowStart.setHours(0, 0, 0, 0);
     const tomorrowStartMs = tomorrowStart.getTime();
@@ -1092,7 +1256,6 @@
 
     let html = '';
 
-    // Today's events with timeline
     html += `<div class="agenda-day-label">Today — ${todayStr}</div>`;
 
     if (todayEvents.length > 0) {
@@ -1103,7 +1266,6 @@
         const evEnd = new Date(e.end_time);
         const status = getEventTimeStatus(evStart, evEnd, now);
 
-        // Insert "now" marker before the first upcoming/current event
         if (!nowMarkerInserted && (status === 'current' || status === 'upcoming')) {
           html += nowMarkerHTML(now);
           nowMarkerInserted = true;
@@ -1112,7 +1274,6 @@
         html += agendaEventHTML(e, status);
       });
 
-      // If all events are past, put the now marker at the end
       if (!nowMarkerInserted) {
         html += nowMarkerHTML(now);
       }
@@ -1120,7 +1281,6 @@
       html += '<div class="agenda-empty">Clear day</div>';
     }
 
-    // Tomorrow's events (all upcoming, no timeline)
     if (tomorrowEvents.length > 0) {
       html += `<div class="agenda-day-label">Tomorrow — ${tomorrowStr}</div>`;
       html += tomorrowEvents.map(e => agendaEventHTML(e, 'upcoming')).join('');
@@ -1128,7 +1288,6 @@
 
     container.innerHTML = html;
 
-    // Auto-scroll to now marker
     setTimeout(() => {
       const marker = container.querySelector('.agenda-now-marker');
       if (marker) {
@@ -1162,7 +1321,7 @@
       timeStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
     }
 
-    const dotColor = event.color || '#3b82f6';
+    const dotColor = event.color || '#c4956a';
     const locationHtml = event.location
       ? `<div class="event-location">${escapeHTML(event.location)}</div>`
       : '';
@@ -1179,10 +1338,8 @@
     `;
   }
 
-  // Refresh agenda every 5 minutes to keep timeline current
   setInterval(() => { loadAgenda(); }, 5 * 60 * 1000);
 
-  // ── Coaching Card ──
   const COACHING_ITEMS = [
     { text: "Driven and peaceful. Strategic and compassionate. Ambitious and humble. The balance itself is the gift.", source: "integration" },
     { text: "Pursue excellence without perfectionism. Seek peace without avoiding hard things.", source: "integration" },
@@ -1199,6 +1356,18 @@
     { text: "Friday evening. Sermon done. Family together. Nothing urgent pulling. The yard looking good. That's the target.", source: "what peace looks like" },
     { text: "Visionary and grounded. Justice-oriented and grace-filled. Strong and gentle. This is not inconsistency. It is integration.", source: "integration" },
     { text: "The gap between where you are and Level 1 isn't about doing more. It's about needing less.", source: "Enneagram 3" },
+    { text: "When we honestly ask ourselves which person in our lives means the most to us, we often find that it is those who, instead of giving advice, solutions, or cures, have chosen rather to share our pain.", source: "Henri Nouwen" },
+    { text: "Vocation does not come from willfulness. It comes from listening. I must listen to my life and try to understand what it is truly about.", source: "Parker Palmer" },
+    { text: "Here is the world. Beautiful and terrible things will happen. Don't be afraid.", source: "Frederick Buechner" },
+    { text: "Vulnerability is not winning or losing; it's having the courage to show up and be seen when we have no control over the outcome.", source: "Brené Brown" },
+    { text: "Don't ask what the world needs. Ask what makes you come alive, and go do it. Because what the world needs is people who have come alive.", source: "Howard Thurman" },
+    { text: "We do not find the meaning of life by ourselves alone — we find it with another.", source: "Thomas Merton" },
+    { text: "The mind that is not baffled is not employed. The impeded stream is the one that sings.", source: "Wendell Berry" },
+    { text: "We do not think ourselves into new ways of living. We live ourselves into new ways of thinking.", source: "Richard Rohr" },
+    { text: "If you can't fly then run, if you can't run then walk, if you can't walk then crawl, but whatever you do you have to keep moving forward.", source: "Martin Luther King Jr." },
+    { text: "In the middle of difficulty lies opportunity.", source: "Albert Einstein" },
+    { text: "The place God calls you to is the place where your deep gladness and the world's deep hunger meet.", source: "Frederick Buechner" },
+    { text: "Grace means that all of your mistakes now serve a purpose instead of serving shame.", source: "Brené Brown" },
   ];
 
   function renderCoachingCard() {
@@ -1210,10 +1379,8 @@
     `;
   }
 
-  // ── Init ──
   checkAuth();
 
-  // Listen for enter on login
   document.getElementById('login-password').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleLogin();
   });
