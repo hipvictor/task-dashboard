@@ -938,7 +938,7 @@
             <span class="section-title">🎯 Bench</span>
             <span class="section-count" id="bench-count">0</span>
           </div>
-          <div id="bench-tasks" class="drop-zone" data-pool="bench" data-pool-label="Drop here → Bench" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'bench')"></div>
+          <div id="bench-tasks" class="drop-zone" data-pool="bench" data-pool-label="Drop here → Bench" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'bench')"></div>
         </div>
 
         <div class="section" id="inbox-section">
@@ -946,7 +946,7 @@
             <span class="section-title">📥 Inbox</span>
             <span class="section-count" id="inbox-count">0</span>
           </div>
-          <div id="inbox-tasks" class="drop-zone" data-pool="inbox" data-pool-label="Drop here → Inbox" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'inbox')"></div>
+          <div id="inbox-tasks" class="drop-zone" data-pool="inbox" data-pool-label="Drop here → Inbox" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'inbox')"></div>
         </div>
 
         <div class="section" id="shelf-section">
@@ -955,7 +955,7 @@
             <span class="section-count" id="shelf-count">0</span>
           </div>
           <div class="collapsible-body" id="shelf-body">
-            <div id="shelf-tasks" class="drop-zone" data-pool="shelf" data-pool-label="Drop here → Shelf" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'shelf')"></div>
+            <div id="shelf-tasks" class="drop-zone" data-pool="shelf" data-pool-label="Drop here → Shelf" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'shelf')"></div>
           </div>
         </div>
 
@@ -965,7 +965,7 @@
             <span class="section-count" id="someday-count">0</span>
           </div>
           <div class="collapsible-body" id="someday-body">
-            <div id="someday-tasks" class="drop-zone" data-pool="someday" data-pool-label="Drop here → Someday" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'someday')"></div>
+            <div id="someday-tasks" class="drop-zone" data-pool="someday" data-pool-label="Drop here → Someday" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'someday')"></div>
           </div>
         </div>
       </div>
@@ -1247,7 +1247,7 @@
     `;
 
     const dragAttrs = isDone ? '' : `draggable="true" ondragstart="onDragStart(event, '${task.id}', '${task.status}')" ondragend="onDragEnd(event)"`;
-    const dragHandle = isDone ? '' : '<div class="drag-handle" title="Drag to move">⠿</div>';
+    const dragHandle = isDone ? '' : `<div class="drag-handle" title="Drag to move" ontouchstart="onTouchDragStart(event, '${task.id}', '${task.status}')" ontouchmove="onTouchDragMove(event)" ontouchend="onTouchDragEnd(event)">⠿</div>`;
 
     return `
       <div class="task" data-id="${task.id}" ${dragAttrs}>
@@ -1365,16 +1365,19 @@
 
   document.addEventListener('click', closeAllMenus);
 
-  // — Drag and Drop —
+  // — Drag and Drop (Safari-compatible + touch support) —
   let draggedTaskId = null;
   let draggedFromPool = null;
+  const dragEnterCounters = new Map(); // counter per drop zone to fix Safari flicker
 
   function onDragStart(event, taskId, fromPool) {
     draggedTaskId = taskId;
     draggedFromPool = fromPool;
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', taskId);
-    // Slight delay so the dragging class doesn't flash before the ghost image forms
+    // Reset all counters
+    dragEnterCounters.clear();
+    // Delay so the dragging class doesn't flash before ghost image forms
     requestAnimationFrame(() => {
       event.target.closest('.task').classList.add('dragging');
     });
@@ -1390,38 +1393,136 @@
   function onDragEnd(event) {
     event.target.closest('.task')?.classList.remove('dragging');
     document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+    dragEnterCounters.clear();
     draggedTaskId = null;
     draggedFromPool = null;
+  }
+
+  function onDragEnter(event) {
+    event.preventDefault();
+    const zone = event.currentTarget;
+    const pool = zone.dataset.pool;
+    const count = (dragEnterCounters.get(pool) || 0) + 1;
+    dragEnterCounters.set(pool, count);
+    if (pool !== draggedFromPool) {
+      zone.classList.add('drag-over');
+    }
   }
 
   function onDragOver(event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    const zone = event.currentTarget;
-    // Only show drag-over if this is a different pool
-    if (zone.dataset.pool !== draggedFromPool) {
-      zone.classList.add('drag-over');
-    }
   }
 
   function onDragLeave(event) {
-    // Only remove if we're actually leaving the zone (not entering a child)
     const zone = event.currentTarget;
-    if (!zone.contains(event.relatedTarget)) {
+    const pool = zone.dataset.pool;
+    const count = (dragEnterCounters.get(pool) || 1) - 1;
+    dragEnterCounters.set(pool, count);
+    // Only remove highlight when we've truly left (counter back to 0)
+    if (count <= 0) {
       zone.classList.remove('drag-over');
+      dragEnterCounters.set(pool, 0);
     }
   }
 
   async function onDrop(event, targetPool) {
     event.preventDefault();
+    event.stopPropagation();
     const zone = event.currentTarget;
     zone.classList.remove('drag-over');
+    dragEnterCounters.set(targetPool, 0);
 
     if (!draggedTaskId || targetPool === draggedFromPool) return;
 
     await moveTask(draggedTaskId, targetPool);
     draggedTaskId = null;
     draggedFromPool = null;
+  }
+
+  // — Touch drag support (iOS Safari) —
+  let touchDragEl = null;
+  let touchClone = null;
+  let touchStartY = 0;
+  let touchMoved = false;
+
+  function onTouchDragStart(event, taskId, fromPool) {
+    const touch = event.touches[0];
+    touchStartY = touch.clientY;
+    touchMoved = false;
+    touchDragEl = event.target.closest('.task');
+    draggedTaskId = taskId;
+    draggedFromPool = fromPool;
+
+    // Long press detection — 300ms
+    touchDragEl._touchTimer = setTimeout(() => {
+      touchMoved = true;
+      touchDragEl.classList.add('dragging');
+      // Create a floating clone
+      touchClone = touchDragEl.cloneNode(true);
+      touchClone.style.cssText = `position:fixed;top:${touch.clientY - 20}px;left:${touch.clientX - 20}px;width:${touchDragEl.offsetWidth}px;opacity:0.85;z-index:9999;pointer-events:none;transform:rotate(2deg);box-shadow:0 8px 24px rgba(0,0,0,0.3);`;
+      document.body.appendChild(touchClone);
+      // Expand collapsed sections
+      document.querySelectorAll('.collapsible-body').forEach(body => {
+        body.classList.add('open');
+        const section = body.closest('.section');
+        const header = section.querySelector('.collapsible-header');
+        if (header) header.classList.add('open');
+      });
+    }, 300);
+  }
+
+  function onTouchDragMove(event) {
+    if (!touchMoved || !touchClone) {
+      // Check if finger moved enough to cancel (if not yet in drag mode)
+      if (!touchMoved && touchDragEl) {
+        const touch = event.touches[0];
+        if (Math.abs(touch.clientY - touchStartY) > 10) {
+          clearTimeout(touchDragEl._touchTimer);
+          cleanupTouch();
+        }
+      }
+      return;
+    }
+    event.preventDefault();
+    const touch = event.touches[0];
+    touchClone.style.top = (touch.clientY - 20) + 'px';
+    touchClone.style.left = (touch.clientX - 20) + 'px';
+
+    // Highlight drop zone under finger
+    document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (el) {
+      const zone = el.closest('.drop-zone');
+      if (zone && zone.dataset.pool !== draggedFromPool) {
+        zone.classList.add('drag-over');
+      }
+    }
+  }
+
+  async function onTouchDragEnd(event) {
+    if (touchDragEl) clearTimeout(touchDragEl._touchTimer);
+    if (!touchMoved || !touchClone) { cleanupTouch(); return; }
+
+    const touch = event.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const zone = el?.closest('.drop-zone');
+
+    document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+
+    if (zone && zone.dataset.pool !== draggedFromPool && draggedTaskId) {
+      await moveTask(draggedTaskId, zone.dataset.pool);
+    }
+
+    cleanupTouch();
+  }
+
+  function cleanupTouch() {
+    if (touchClone) { touchClone.remove(); touchClone = null; }
+    if (touchDragEl) { touchDragEl.classList.remove('dragging'); touchDragEl = null; }
+    draggedTaskId = null;
+    draggedFromPool = null;
+    touchMoved = false;
   }
 
   function daysUntil(dateStr) {
