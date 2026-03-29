@@ -378,11 +378,63 @@
       margin-bottom: 0.375rem;
       transition: all 0.2s ease;
       box-shadow: 0 1px 3px var(--shadow);
+      position: relative;
     }
 
     .task:hover {
       background: var(--surface-hover);
       border-color: var(--border);
+    }
+
+    .drag-handle {
+      display: flex;
+      align-items: center;
+      cursor: grab;
+      color: transparent;
+      transition: color 0.2s ease;
+      flex-shrink: 0;
+      margin-top: 2px;
+      font-size: 0.75rem;
+      user-select: none;
+      padding: 0 2px;
+      letter-spacing: 1px;
+    }
+
+    .task:hover .drag-handle {
+      color: var(--text-muted);
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .task.dragging {
+      opacity: 0.4;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(196, 149, 106, 0.2);
+    }
+
+    .drop-zone {
+      transition: all 0.2s ease;
+      min-height: 4px;
+    }
+
+    .drop-zone.drag-over {
+      background: rgba(196, 149, 106, 0.08);
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .drop-zone.drag-over::before {
+      content: attr(data-pool-label);
+      display: block;
+      text-align: center;
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      opacity: 0.8;
     }
 
     .task-checkbox {
@@ -881,6 +933,44 @@
       <div class="left-col-content">
         <div class="alerts-bar" id="alerts-bar"></div>
 
+        <div class="section" id="bench-section">
+          <div class="section-header">
+            <span class="section-title">🎯 Bench</span>
+            <span class="section-count" id="bench-count">0</span>
+          </div>
+          <div id="bench-tasks" class="drop-zone" data-pool="bench" data-pool-label="Drop here → Bench" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'bench')"></div>
+        </div>
+
+        <div class="section" id="inbox-section">
+          <div class="section-header">
+            <span class="section-title">📥 Inbox</span>
+            <span class="section-count" id="inbox-count">0</span>
+          </div>
+          <div id="inbox-tasks" class="drop-zone" data-pool="inbox" data-pool-label="Drop here → Inbox" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'inbox')"></div>
+        </div>
+
+        <div class="section" id="shelf-section">
+          <div class="section-header collapsible-header" onclick="toggleCollapsible('shelf')">
+            <span class="section-title"><span class="arrow" id="shelf-arrow">▸</span> 📦 Shelf</span>
+            <span class="section-count" id="shelf-count">0</span>
+          </div>
+          <div class="collapsible-body" id="shelf-body">
+            <div id="shelf-tasks" class="drop-zone" data-pool="shelf" data-pool-label="Drop here → Shelf" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'shelf')"></div>
+          </div>
+        </div>
+
+        <div class="section" id="someday-section">
+          <div class="section-header collapsible-header" onclick="toggleCollapsible('someday')">
+            <span class="section-title"><span class="arrow" id="someday-arrow">▸</span> 💭 Someday / Maybe</span>
+            <span class="section-count" id="someday-count">0</span>
+          </div>
+          <div class="collapsible-body" id="someday-body">
+            <div id="someday-tasks" class="drop-zone" data-pool="someday" data-pool-label="Drop here → Someday" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'someday')"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="left-col-bottom">
         <div class="filter-bar">
           <select id="filter-domain" onchange="renderTasks()">
             <option value="all">All domains</option>
@@ -894,45 +984,6 @@
             <option value="all">All tags</option>
           </select>
         </div>
-
-        <div class="section" id="bench-section">
-          <div class="section-header">
-            <span class="section-title">🎯 Bench</span>
-            <span class="section-count" id="bench-count">0</span>
-          </div>
-          <div id="bench-tasks"></div>
-        </div>
-
-        <div class="section" id="inbox-section">
-          <div class="section-header">
-            <span class="section-title">📥 Inbox</span>
-            <span class="section-count" id="inbox-count">0</span>
-          </div>
-          <div id="inbox-tasks"></div>
-        </div>
-
-        <div class="section" id="shelf-section">
-          <div class="section-header collapsible-header" onclick="toggleCollapsible('shelf')">
-            <span class="section-title"><span class="arrow" id="shelf-arrow">▸</span> 📦 Shelf</span>
-            <span class="section-count" id="shelf-count">0</span>
-          </div>
-          <div class="collapsible-body" id="shelf-body">
-            <div id="shelf-tasks"></div>
-          </div>
-        </div>
-
-        <div class="section" id="someday-section">
-          <div class="section-header collapsible-header" onclick="toggleCollapsible('someday')">
-            <span class="section-title"><span class="arrow" id="someday-arrow">▸</span> 💭 Someday / Maybe</span>
-            <span class="section-count" id="someday-count">0</span>
-          </div>
-          <div class="collapsible-body" id="someday-body">
-            <div id="someday-tasks"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="left-col-bottom">
         <div class="quick-add">
           <input type="text" id="quick-add-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')handleQuickAdd()">
           <select id="quick-add-pool">
@@ -1195,8 +1246,12 @@
       </div>
     `;
 
+    const dragAttrs = isDone ? '' : `draggable="true" ondragstart="onDragStart(event, '${task.id}', '${task.status}')" ondragend="onDragEnd(event)"`;
+    const dragHandle = isDone ? '' : '<div class="drag-handle" title="Drag to move">⠿</div>';
+
     return `
-      <div class="task" data-id="${task.id}">
+      <div class="task" data-id="${task.id}" ${dragAttrs}>
+        ${dragHandle}
         <div class="task-checkbox ${checked}" onclick="toggleComplete('${task.id}', ${isDone})"></div>
         <div class="task-content">
           <div class="task-name ${completedClass}">${escapeHTML(task.name)}</div>
@@ -1309,6 +1364,65 @@
   }
 
   document.addEventListener('click', closeAllMenus);
+
+  // — Drag and Drop —
+  let draggedTaskId = null;
+  let draggedFromPool = null;
+
+  function onDragStart(event, taskId, fromPool) {
+    draggedTaskId = taskId;
+    draggedFromPool = fromPool;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', taskId);
+    // Slight delay so the dragging class doesn't flash before the ghost image forms
+    requestAnimationFrame(() => {
+      event.target.closest('.task').classList.add('dragging');
+    });
+    // Expand collapsed sections so they can receive drops
+    document.querySelectorAll('.collapsible-body').forEach(body => {
+      body.classList.add('open');
+      const section = body.closest('.section');
+      const header = section.querySelector('.collapsible-header');
+      if (header) header.classList.add('open');
+    });
+  }
+
+  function onDragEnd(event) {
+    event.target.closest('.task')?.classList.remove('dragging');
+    document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+    draggedTaskId = null;
+    draggedFromPool = null;
+  }
+
+  function onDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const zone = event.currentTarget;
+    // Only show drag-over if this is a different pool
+    if (zone.dataset.pool !== draggedFromPool) {
+      zone.classList.add('drag-over');
+    }
+  }
+
+  function onDragLeave(event) {
+    // Only remove if we're actually leaving the zone (not entering a child)
+    const zone = event.currentTarget;
+    if (!zone.contains(event.relatedTarget)) {
+      zone.classList.remove('drag-over');
+    }
+  }
+
+  async function onDrop(event, targetPool) {
+    event.preventDefault();
+    const zone = event.currentTarget;
+    zone.classList.remove('drag-over');
+
+    if (!draggedTaskId || targetPool === draggedFromPool) return;
+
+    await moveTask(draggedTaskId, targetPool);
+    draggedTaskId = null;
+    draggedFromPool = null;
+  }
 
   function daysUntil(dateStr) {
     const target = new Date(dateStr + 'T00:00:00');
