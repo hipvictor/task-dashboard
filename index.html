@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Task Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Libre+Baskerville:wght@400;700&family=Source+Serif+4:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -21,6 +21,7 @@
       --success: #5cb85c;
       --purple: #a68bc1;
       --shadow: rgba(0, 0, 0, 0.3);
+      --font: 'Inter', -apple-system, system-ui, sans-serif;
     }
 
     [data-theme="stone"] {
@@ -58,7 +59,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      font-family: var(--font);
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
@@ -99,7 +100,7 @@
       border-radius: 8px;
       color: var(--text);
       font-size: 0.875rem;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: var(--font);
       margin-bottom: 0.75rem;
       transition: border-color 0.2s ease;
     }
@@ -191,6 +192,72 @@
       border-color: var(--accent);
       box-shadow: 0 0 6px rgba(196, 149, 106, 0.4);
     }
+
+    /* ── Settings Dropdown ── */
+    .settings-wrap {
+      position: relative;
+    }
+
+    .settings-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.375rem 0.625rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .settings-btn:hover { border-color: var(--text-muted); color: var(--text); }
+
+    .settings-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.875rem;
+      z-index: 200;
+      min-width: 200px;
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+
+    .settings-dropdown.open { display: block; }
+
+    .settings-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .settings-label:not(:first-child) { margin-top: 0.875rem; }
+
+    .font-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .font-option {
+      background: none;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.375rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .font-option:hover { background: var(--surface-hover); color: var(--text); }
+    .font-option.active { border-color: var(--accent); color: var(--accent); background: var(--surface-hover); }
 
     .btn-logout {
       background: none;
@@ -463,7 +530,7 @@
       border-radius: 8px;
       color: var(--text);
       font-size: 0.875rem;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: var(--font);
       transition: all 0.2s ease;
     }
 
@@ -479,7 +546,7 @@
       border-radius: 8px;
       color: var(--text);
       font-size: 0.8125rem;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: var(--font);
       transition: all 0.2s ease;
     }
 
@@ -714,7 +781,7 @@
       cursor: pointer;
       border-radius: 4px;
       transition: all 0.2s ease;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: var(--font);
     }
 
     .move-menu button:hover {
@@ -738,7 +805,7 @@
       border-radius: 6px;
       color: var(--text-muted);
       font-size: 0.75rem;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: var(--font);
       transition: all 0.2s ease;
     }
 
@@ -788,9 +855,22 @@
     <div class="header-right">
       <div class="header-date" id="header-date"></div>
       <div class="theme-picker">
-        <button class="theme-btn ember active" onclick="setTheme('ember')" title="Ember theme"></button>
-        <button class="theme-btn stone" onclick="setTheme('stone')" title="Stone theme"></button>
-        <button class="theme-btn forest" onclick="setTheme('forest')" title="Forest theme"></button>
+        <button class="theme-btn ember active" onclick="setTheme('ember')" title="Ember"></button>
+        <button class="theme-btn stone" onclick="setTheme('stone')" title="Stone"></button>
+        <button class="theme-btn forest" onclick="setTheme('forest')" title="Forest"></button>
+      </div>
+      <div class="settings-wrap">
+        <button class="settings-btn" onclick="toggleSettings(event)">Aa</button>
+        <div class="settings-dropdown" id="settings-dropdown">
+          <div class="settings-label">Font</div>
+          <div class="font-options">
+            <button class="font-option active" onclick="setFont('Inter')" style="font-family:'Inter',sans-serif" data-font="Inter">Inter</button>
+            <button class="font-option" onclick="setFont('DM Sans')" style="font-family:'DM Sans',sans-serif" data-font="DM Sans">DM Sans</button>
+            <button class="font-option" onclick="setFont('Source Serif 4')" style="font-family:'Source Serif 4',serif" data-font="Source Serif 4">Source Serif 4</button>
+            <button class="font-option" onclick="setFont('Libre Baskerville')" style="font-family:'Libre Baskerville',serif" data-font="Libre Baskerville">Libre Baskerville</button>
+            <button class="font-option" onclick="setFont('system-ui')" style="font-family:system-ui" data-font="system-ui">System</button>
+          </div>
+        </div>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
     </div>
@@ -800,6 +880,20 @@
     <div class="left-col">
       <div class="left-col-content">
         <div class="alerts-bar" id="alerts-bar"></div>
+
+        <div class="filter-bar">
+          <select id="filter-domain" onchange="renderTasks()">
+            <option value="all">All domains</option>
+            <option value="work">Work</option>
+            <option value="home">Home</option>
+          </select>
+          <select id="filter-project" onchange="renderTasks()">
+            <option value="all">All projects</option>
+          </select>
+          <select id="filter-tag" onchange="renderTasks()">
+            <option value="all">All tags</option>
+          </select>
+        </div>
 
         <div class="section" id="bench-section">
           <div class="section-header">
@@ -839,17 +933,6 @@
       </div>
 
       <div class="left-col-bottom">
-        <div class="filter-bar">
-          <select id="filter-domain" onchange="renderTasks()">
-            <option value="all">All domains</option>
-            <option value="work">Work</option>
-            <option value="home">Home</option>
-          </select>
-          <select id="filter-project" onchange="renderTasks()">
-            <option value="all">All projects</option>
-          </select>
-        </div>
-
         <div class="quick-add">
           <input type="text" id="quick-add-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')handleQuickAdd()">
           <select id="quick-add-pool">
@@ -911,15 +994,36 @@
   let allTasks = [];
   let openMenu = null;
   let currentTheme = 'ember';
+  let currentFont = 'Inter';
 
   function setTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     currentTheme = theme;
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    document.querySelector(`.theme-btn.${theme}`).classList.add('active');
+    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.theme-btn.${theme}`)?.classList.add('active');
   }
+
+  function setFont(font) {
+    const fallback = font.includes('Serif') || font.includes('Baskerville') ? ', serif' : ', -apple-system, system-ui, sans-serif';
+    document.documentElement.style.setProperty('--font', `'${font}'${fallback}`);
+    currentFont = font;
+    document.querySelectorAll('.font-option').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.font === font);
+    });
+  }
+
+  function toggleSettings(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('settings-dropdown');
+    dropdown.classList.toggle('open');
+  }
+
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('settings-dropdown');
+    if (dropdown && !e.target.closest('.settings-wrap')) {
+      dropdown.classList.remove('open');
+    }
+  });
 
   async function checkAuth() {
     if (!sb) {
@@ -1016,16 +1120,25 @@
     projects.forEach(p => {
       select.innerHTML += `<option value="${p}">${p}</option>`;
     });
+
+    const tagSelect = document.getElementById('filter-tag');
+    const tags = [...new Set(allTasks.filter(t => t.tags && t.tags.length).flatMap(t => t.tags))].sort();
+    tagSelect.innerHTML = '<option value="all">All tags</option>';
+    tags.forEach(tag => {
+      tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
+    });
   }
 
   function getFilteredTasks(status) {
     const domain = document.getElementById('filter-domain').value;
     const project = document.getElementById('filter-project').value;
+    const tag = document.getElementById('filter-tag').value;
 
     return allTasks.filter(t => {
       if (t.status !== status) return false;
       if (domain !== 'all' && t.domain !== domain) return false;
       if (project !== 'all' && t.project !== project) return false;
+      if (tag !== 'all' && (!t.tags || !t.tags.includes(tag))) return false;
       return true;
     });
   }
