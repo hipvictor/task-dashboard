@@ -725,9 +725,9 @@
   const SUPABASE_URL = 'https://epdxkvohrclpqnlagkwv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZHhrdm9ocmNscHFubGFna3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3NTA3NDYsImV4cCI6MjA5MDMyNjc0Nn0.l9A8VlNFQw0kWgBLS0Cvo9CU6WEzHZS5OcLmBLz7CDI';
 
-  let supabase;
+  let sb;
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } catch (e) {
     document.getElementById('login-error').textContent = 'Supabase library failed to load: ' + e.message;
   }
@@ -740,12 +740,12 @@
 
   // ── Auth ──
   async function checkAuth() {
-    if (!supabase) {
+    if (!sb) {
       document.getElementById('login-screen').style.display = 'flex';
       return;
     }
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await sb.auth.getSession();
       if (session) {
         showDashboard();
       } else {
@@ -762,14 +762,14 @@
     const password = document.getElementById('login-password').value;
     const errorEl = document.getElementById('login-error');
 
-    if (!supabase) {
+    if (!sb) {
       errorEl.textContent = 'Supabase not loaded. Refresh the page.';
       return;
     }
     errorEl.textContent = 'Signing in...';
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) {
         errorEl.textContent = error.message;
       } else if (data && data.session) {
@@ -783,7 +783,7 @@
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     document.getElementById('dashboard').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
   }
@@ -813,7 +813,7 @@
   // ── Surfacing Logic ──
   async function surfaceDeferredTasks() {
     try {
-      await supabase.rpc('surface_deferred_tasks');
+      await sb.rpc('surface_deferred_tasks');
     } catch (e) {
       console.log('Surfacing check:', e);
     }
@@ -821,7 +821,7 @@
 
   // ── Load Tasks ──
   async function loadTasks() {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: false });
@@ -956,7 +956,7 @@
   // ── Actions ──
   async function toggleComplete(id, wasDone) {
     const newStatus = wasDone ? 'shelf' : 'done';
-    const { error } = await supabase
+    const { error } = await sb
       .from('tasks')
       .update({ status: newStatus })
       .eq('id', id);
@@ -966,7 +966,7 @@
 
   async function moveTask(id, newStatus) {
     closeAllMenus();
-    const { error } = await supabase
+    const { error } = await sb
       .from('tasks')
       .update({ status: newStatus })
       .eq('id', id);
@@ -977,7 +977,7 @@
   async function deleteTask(id) {
     closeAllMenus();
     if (!confirm('Delete this task?')) return;
-    const { error } = await supabase
+    const { error } = await sb
       .from('tasks')
       .delete()
       .eq('id', id);
@@ -991,7 +991,7 @@
     const name = input.value.trim();
     if (!name) return;
 
-    const { error } = await supabase
+    const { error } = await sb
       .from('tasks')
       .insert({
         name: name,
@@ -1063,7 +1063,7 @@
     const endOfTomorrow = new Date(tomorrow);
     endOfTomorrow.setHours(23, 59, 59, 999);
 
-    const { data: events, error } = await supabase
+    const { data: events, error } = await sb
       .from('calendar_events')
       .select('*')
       .gte('start_time', startOfToday.toISOString())
