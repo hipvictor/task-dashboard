@@ -1074,6 +1074,83 @@
       opacity: 0.8;
     }
 
+    /* — Inline task editor — */
+    .task-edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+
+    .task-edit-form input[type="text"],
+    .task-edit-form input[type="date"],
+    .task-edit-form select {
+      width: 100%;
+      padding: 0.4rem 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.8125rem;
+    }
+
+    .task-edit-form .edit-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .task-edit-form .edit-row > * {
+      flex: 1;
+    }
+
+    .task-edit-form label {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.125rem;
+      display: block;
+    }
+
+    .task-edit-form .edit-field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .task-edit-form .edit-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 0.25rem;
+    }
+
+    .task-edit-form .edit-actions button {
+      padding: 0.35rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: var(--font);
+      border: 1px solid var(--border);
+      transition: all 0.15s ease;
+    }
+
+    .task-edit-form .edit-actions .save-btn {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      font-weight: 500;
+    }
+
+    .task-edit-form .edit-actions .cancel-edit-btn {
+      background: var(--bg);
+      color: var(--text-muted);
+    }
+
     .filter-bar {
       display: flex;
       gap: 0.5rem;
@@ -1537,7 +1614,7 @@
         ${dragHandle}
         <div class="task-checkbox ${checked}" onclick="if(!selectMode){event.stopPropagation();toggleComplete('${task.id}', ${isDone})}"></div>
         <div class="task-content">
-          <div class="task-name ${completedClass}">${escapeHTML(task.name)}</div>
+          <div class="task-name ${completedClass}" ${isDone ? '' : `onclick="openTaskEditor('${task.id}', event)"`} style="${isDone ? '' : 'cursor:pointer'}" title="${isDone ? '' : 'Click to edit'}">${escapeHTML(task.name)}</div>
           ${tags.length ? `<div class="task-meta">${tags.join('')}</div>` : ''}
         </div>
         ${moveOptions}
@@ -1786,6 +1863,121 @@
       .delete()
       .eq('id', id);
 
+    if (!error) await loadTasks();
+  }
+
+  // — Inline task editing —
+  let editingTaskId = null;
+
+  function openTaskEditor(id, event) {
+    if (selectMode) return;
+    event.stopPropagation();
+    const task = allTasks.find(t => t.id === id);
+    if (!task || task.status === 'done') return;
+
+    // Close any existing editor
+    if (editingTaskId) closeTaskEditor();
+    editingTaskId = id;
+
+    const taskEl = document.querySelector(`.task[data-id="${id}"]`);
+    if (!taskEl) return;
+
+    const projects = [...new Set(allTasks.filter(t => t.project).map(t => t.project))].sort();
+    const projectOptions = projects.map(p => `<option value="${p}" ${task.project === p ? 'selected' : ''}>${p}</option>`).join('');
+
+    const form = document.createElement('div');
+    form.className = 'task-edit-form';
+    form.id = `edit-form-${id}`;
+    form.onclick = (e) => e.stopPropagation();
+    form.innerHTML = `
+      <div class="edit-field">
+        <label>Task</label>
+        <input type="text" id="edit-name-${id}" value="${escapeHTML(task.name)}">
+      </div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Project</label>
+          <select id="edit-project-${id}">
+            <option value="">None</option>
+            ${projectOptions}
+          </select>
+        </div>
+        <div class="edit-field">
+          <label>Domain</label>
+          <select id="edit-domain-${id}">
+            <option value="work" ${task.domain === 'work' ? 'selected' : ''}>Work</option>
+            <option value="home" ${task.domain === 'home' ? 'selected' : ''}>Home</option>
+          </select>
+        </div>
+      </div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Due date</label>
+          <input type="date" id="edit-due-${id}" value="${task.due_date || ''}">
+        </div>
+        <div class="edit-field">
+          <label>Defer date</label>
+          <input type="date" id="edit-defer-${id}" value="${task.defer_date || ''}">
+        </div>
+      </div>
+      <div class="edit-field">
+        <label>Tags (comma-separated)</label>
+        <input type="text" id="edit-tags-${id}" value="${(task.tags || []).join(', ')}">
+      </div>
+      <div class="edit-actions">
+        <button class="cancel-edit-btn" onclick="closeTaskEditor()">Cancel</button>
+        <button class="save-btn" onclick="saveTaskEdit('${id}')">Save</button>
+      </div>
+    `;
+
+    taskEl.style.display = 'none';
+    taskEl.parentNode.insertBefore(form, taskEl.nextSibling);
+
+    document.getElementById(`edit-name-${id}`).focus();
+    document.getElementById(`edit-name-${id}`).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveTaskEdit(id);
+      if (e.key === 'Escape') closeTaskEditor();
+    });
+  }
+
+  function closeTaskEditor() {
+    if (!editingTaskId) return;
+    const form = document.getElementById(`edit-form-${editingTaskId}`);
+    const taskEl = document.querySelector(`.task[data-id="${editingTaskId}"]`);
+    if (form) form.remove();
+    if (taskEl) taskEl.style.display = '';
+    editingTaskId = null;
+  }
+
+  async function saveTaskEdit(id) {
+    const name = document.getElementById(`edit-name-${id}`).value.trim();
+    if (!name) return;
+
+    const project = document.getElementById(`edit-project-${id}`).value || null;
+    const domain = document.getElementById(`edit-domain-${id}`).value;
+    const due_date = document.getElementById(`edit-due-${id}`).value || null;
+    const defer_date = document.getElementById(`edit-defer-${id}`).value || null;
+    const tagsRaw = document.getElementById(`edit-tags-${id}`).value;
+    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : null;
+
+    const update = { name, project, domain, due_date, defer_date, tags };
+
+    // If defer_date was set and task isn't already deferred, move it
+    const task = allTasks.find(t => t.id === id);
+    if (defer_date && task && task.status !== 'deferred') {
+      update.status = 'deferred';
+    }
+    // If defer_date was cleared and task is deferred, move to inbox
+    if (!defer_date && task && task.status === 'deferred') {
+      update.status = 'inbox';
+    }
+
+    const { error } = await sb
+      .from('tasks')
+      .update(update)
+      .eq('id', id);
+
+    editingTaskId = null;
     if (!error) await loadTasks();
   }
 
