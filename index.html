@@ -1486,6 +1486,413 @@
         display: none;
       }
     }
+
+    /* Briefing View Styles */
+    .briefing-view {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    .briefing-header {
+      margin-bottom: 2rem;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 1.5rem;
+    }
+
+    .briefing-title-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .briefing-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .refresh-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .refresh-btn:hover {
+      background: var(--surface);
+    }
+
+    .briefing-date {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .briefing-loading {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .briefing-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Orientation Box */
+    .orientation-box {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: 1.25rem;
+      border-radius: 6px;
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* Section Styling */
+    .briefing-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .briefing-section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+      border-left: 3px solid var(--accent);
+      padding-left: 0.75rem;
+    }
+
+    /* Calendar Timeline */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .timeline-event {
+      display: grid;
+      grid-template-columns: 100px 1fr auto;
+      gap: 1rem;
+      padding: 0.75rem;
+      background: var(--surface);
+      border-radius: 6px;
+      border-left: 2px solid var(--accent);
+      align-items: center;
+    }
+
+    .timeline-time {
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 0.95rem;
+    }
+
+    .timeline-title {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .timeline-location {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .timeline-conflict {
+      background: rgba(255, 165, 0, 0.15);
+      color: var(--danger);
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    /* Attention/Alerts */
+    .briefing-alerts {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--surface);
+      border-left: 3px solid var(--danger);
+      border-radius: 4px;
+    }
+
+    .alert-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .alert-text {
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    /* Task Picture */
+    .task-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .task-stat-box {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: 6px;
+      text-align: center;
+      border-top: 3px solid var(--accent);
+    }
+
+    .task-stat-number {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .task-stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.625rem;
+      background: var(--surface);
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .task-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 0.375rem;
+    }
+
+    .task-item-text {
+      color: var(--text);
+      flex-grow: 1;
+    }
+
+    /* Thread Health */
+    .thread-health-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .health-count-box {
+      text-align: center;
+      padding: 1rem;
+      border-radius: 6px;
+      border-top: 3px solid;
+    }
+
+    .health-count-box.active {
+      background: rgba(74, 222, 128, 0.1);
+      border-top-color: #4ade80;
+    }
+
+    .health-count-box.cooling {
+      background: rgba(250, 204, 21, 0.1);
+      border-top-color: #facc15;
+    }
+
+    .health-count-box.cold {
+      background: rgba(107, 114, 128, 0.1);
+      border-top-color: #6b7280;
+    }
+
+    .health-count {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .health-count-box.active .health-count {
+      color: #4ade80;
+    }
+
+    .health-count-box.cooling .health-count {
+      color: #facc15;
+    }
+
+    .health-count-box.cold .health-count {
+      color: #6b7280;
+    }
+
+    .health-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .threads-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .thread-card-brief {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: 6px;
+      border-left: 3px solid;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .thread-card-brief:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .thread-card-brief.active {
+      border-left-color: #4ade80;
+    }
+
+    .thread-card-brief.cooling {
+      border-left-color: #facc15;
+    }
+
+    .thread-card-brief.cold {
+      border-left-color: #6b7280;
+    }
+
+    .thread-health-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+
+    .thread-name {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .thread-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Sermon Seeds */
+    .seeds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .seed-card {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: 6px;
+      border-top: 2px solid var(--accent);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .seed-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .seed-type-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: var(--bg);
+      padding: 0.25rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .seed-content {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .seed-richness {
+      display: flex;
+      gap: 0.25rem;
+      font-size: 0.8rem;
+    }
+
+    .richness-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .richness-dot.empty {
+      background: var(--border);
+    }
+
+    /* Coaching Box */
+    .coaching-box {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: 1.25rem;
+      border-radius: 6px;
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 1rem;
+    }
+
+    /* Footer Stats */
+    .briefing-footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
   </style>
 </head>
 <body>
@@ -1528,11 +1935,12 @@
   </div>
 
   <div class="tab-nav">
+  <div class="tab-nav">
     <button class="tab-btn active" onclick="switchView('tasks')">Tasks</button>
     <button class="tab-btn" onclick="switchView('people')">People</button>
     <button class="tab-btn" onclick="switchView('threads')">Threads</button>
+    <button class="tab-btn" onclick="switchView('briefing')">Briefing</button>
   </div>
-
   <div id="tasks-view" class="view active main">
     <div class="left-col">
       <div class="left-col-content">
@@ -1668,6 +2076,19 @@
 <div class="batch-bar" id="batch-bar">
   <span class="batch-count" id="batch-count">0 selected</span>
   <button onclick="batchMove('bench')">→ Bench</button>
+
+  <div id="briefing-view" class="view briefing-view">
+    <div class="briefing-header">
+      <div class="briefing-title-wrap">
+        <h2 class="briefing-title">Daily Briefing</h2>
+        <button class="refresh-btn" onclick="loadBriefing()" title="Refresh briefing">🔄</button>
+      </div>
+      <div class="briefing-date" id="briefing-date"></div>
+    </div>
+    <div class="briefing-content" id="briefing-content">
+      <div class="briefing-loading">Loading briefing...</div>
+    </div>
+  </div>
   <button onclick="batchMove('inbox')">→ Inbox</button>
   <button onclick="batchMove('shelf')">→ Shelf</button>
   <button onclick="batchMove('deferred')">→ Deferred</button>
@@ -1809,6 +2230,7 @@
     document.getElementById('tasks-view').classList.remove('active');
     document.getElementById('people-view').classList.remove('active');
     document.getElementById('threads-view').classList.remove('active');
+    document.getElementById('briefing-view').classList.remove('active');
 
     // Remove active class from all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1825,7 +2247,12 @@
       document.getElementById('threads-view').classList.add('active');
       document.querySelectorAll('.tab-btn')[2].classList.add('active');
       loadThreads();
+    } else if (viewName === 'briefing') {
+      document.getElementById('briefing-view').classList.add('active');
+      document.querySelectorAll('.tab-btn')[3].classList.add('active');
+      loadBriefing();
     }
+  }
   }
 
   // ── People View ──
@@ -2036,6 +2463,395 @@
       thread.starred = !thread.starred;
       sb.from('threads').update({ starred: thread.starred }).eq('id', threadId).catch(e => console.error('Error updating star:', e));
     }
+  }
+
+
+  let briefingCache = null;
+
+  async function loadBriefing() {
+    const content = document.getElementById('briefing-content');
+    
+    if (briefingCache) {
+      renderBriefing(briefingCache);
+      return;
+    }
+
+    content.innerHTML = '<div class="briefing-loading">Loading briefing...</div>';
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      
+      const weekEnd = new Date(today);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+      // Fetch calendar events for today and tomorrow
+      const { data: events, error: eventsErr } = await sb.from('calendar_events')
+        .select('*')
+        .gte('start_time', todayStr + 'T00:00:00')
+        .lte('start_time', tomorrowStr + 'T23:59:59')
+        .order('start_time');
+
+      if (eventsErr) throw eventsErr;
+
+      // Fetch tasks
+      const { data: overdue, error: overdueErr } = await sb.from('tasks')
+        .select('*')
+        .lt('due_date', todayStr)
+        .not('status', 'in', '("done","someday","deferred")');
+      
+      const { data: dueToday, error: dueTodayErr } = await sb.from('tasks')
+        .select('*')
+        .eq('due_date', todayStr)
+        .not('status', 'in', '("done","someday")');
+      
+      const { data: dueWeek, error: dueWeekErr } = await sb.from('tasks')
+        .select('*')
+        .gt('due_date', todayStr)
+        .lte('due_date', weekEndStr)
+        .not('status', 'in', '("done","someday")');
+      
+      const { data: bench, error: benchErr } = await sb.from('tasks')
+        .select('*')
+        .eq('status', 'bench');
+      
+      const { count: inboxCount, error: inboxErr } = await sb.from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'inbox');
+
+      if (overdueErr || dueTodayErr || dueWeekErr || benchErr || inboxErr) {
+        throw new Error('Error fetching tasks');
+      }
+
+      // Fetch thread health
+      const { data: threads, error: threadsErr } = await sb.rpc('thread_health');
+      if (threadsErr) throw threadsErr;
+
+      // Fetch recent interactions
+      let { data: interactions, error: interactionsErr } = await sb.from('interactions')
+        .select('*, people(canonical_name, name)')
+        .gte('interaction_date', sevenDaysAgoStr)
+        .order('signal_weight', { ascending: false })
+        .limit(10);
+      
+      if (interactionsErr) {
+        // Fallback: fetch separately if join fails
+        const { data: rawInteractions } = await sb.from('interactions')
+          .select('*')
+          .gte('interaction_date', sevenDaysAgoStr)
+          .order('signal_weight', { ascending: false })
+          .limit(10);
+        interactions = rawInteractions || [];
+      } else {
+        interactions = interactions || [];
+      }
+
+      // Fetch sermon seeds
+      const { data: seeds, error: seedsErr } = await sb.from('sermon_seeds')
+        .select('*')
+        .gte('created_at', sevenDaysAgoStr)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (seedsErr) throw seedsErr;
+
+      briefingCache = {
+        today: today,
+        todayStr: todayStr,
+        tomorrow: tomorrow,
+        tomorrowStr: tomorrowStr,
+        events: events || [],
+        overdue: overdue || [],
+        dueToday: dueToday || [],
+        dueWeek: dueWeek || [],
+        bench: bench || [],
+        inboxCount: inboxCount || 0,
+        threads: threads || [],
+        interactions: interactions || [],
+        seeds: seeds || []
+      };
+
+      renderBriefing(briefingCache);
+    } catch (e) {
+      console.error('Error loading briefing:', e);
+      content.innerHTML = '<div class="briefing-loading" style="color: var(--danger);">Error loading briefing. Please try refreshing.</div>';
+    }
+  }
+
+  function renderBriefing(data) {
+    const { today, todayStr, tomorrow, tomorrowStr, events, overdue, dueToday, dueWeek, bench, inboxCount, threads, interactions, seeds } = data;
+    
+    // Set date header
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    document.getElementById('briefing-date').textContent = `${dayName}, ${dateStr}`;
+
+    // Generate orientation text
+    const tomorrowEvents = events.filter(e => e.start_time.startsWith(tomorrowStr));
+    const allAlerts = overdue.length + dueToday.length;
+    let orientation = `${dayName}. `;
+    
+    if (dayName === 'Monday') {
+      orientation += 'Day off. ';
+    } else if (tomorrowEvents.length > 0) {
+      orientation += `${tomorrowEvents.length} meeting${tomorrowEvents.length > 1 ? 's' : ''} tomorrow. `;
+    }
+    
+    if (allAlerts > 0) {
+      orientation += `${allAlerts} task${allAlerts > 1 ? 's' : ''} overdue/due. `;
+    }
+
+    // Check for Holy Week (March 29 - April 5, 2026)
+    if ((today.getMonth() === 2 && today.getDate() >= 29) || (today.getMonth() === 3 && today.getDate() <= 5)) {
+      orientation += 'Holy Week season. ';
+    }
+
+    orientation += 'Check key metrics below.';
+
+    // Render HTML
+    let html = `
+      <div class="orientation-box">
+        ${orientation}
+      </div>
+
+      <div class="briefing-section">
+        <div class="briefing-section-header">📅 Today's Schedule</div>
+    `;
+
+    const todayEvents = events.filter(e => e.start_time.startsWith(todayStr));
+    if (todayEvents.length === 0) {
+      html += '<div style="color: var(--text-muted); font-size: 0.9rem; padding: 1rem;">No events scheduled for today.</div>';
+    } else {
+      html += '<div class="timeline">';
+      
+      // Check for conflicts
+      for (let i = 0; i < todayEvents.length - 1; i++) {
+        const current = todayEvents[i];
+        const next = todayEvents[i + 1];
+        const currentEnd = new Date(current.start_time).getTime() + (current.duration_minutes || 60) * 60000;
+        const nextStart = new Date(next.start_time).getTime();
+        if (nextStart < currentEnd) {
+          // Conflict detected
+          const eventEl = document.createElement('div');
+          eventEl._conflict = true;
+          todayEvents[i]._hasConflict = true;
+          todayEvents[i + 1]._hasConflict = true;
+        }
+      }
+
+      todayEvents.forEach(event => {
+        const time = new Date(event.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const title = escapeHTML(event.summary || 'Untitled');
+        const location = event.location ? escapeHTML(event.location) : '';
+        const conflictBadge = event._hasConflict ? '<span class="timeline-conflict">⚠ OVERLAP</span>' : '';
+        
+        html += `
+          <div class="timeline-event">
+            <div class="timeline-time">${time}</div>
+            <div>
+              <div class="timeline-title">${title}</div>
+              ${location ? `<div class="timeline-location">${location}</div>` : ''}
+            </div>
+            ${conflictBadge}
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+    }
+
+    html += `
+      </div>
+
+      <div class="briefing-section">
+        <div class="briefing-section-header">🔴 Attention</div>
+        <div class="briefing-alerts">
+    `;
+
+    if (overdue.length === 0 && dueToday.length === 0) {
+      html += '<div style="color: var(--text-muted); font-size: 0.9rem; padding: 0.5rem;">No urgent items.</div>';
+    } else {
+      overdue.forEach(task => {
+        html += `
+          <div class="alert-item">
+            <div class="alert-icon">🔴</div>
+            <div class="alert-text"><strong>OVERDUE:</strong> ${escapeHTML(task.title)}</div>
+          </div>
+        `;
+      });
+
+      dueToday.forEach(task => {
+        html += `
+          <div class="alert-item">
+            <div class="alert-icon">🟡</div>
+            <div class="alert-text"><strong>DUE TODAY:</strong> ${escapeHTML(task.title)}</div>
+          </div>
+        `;
+      });
+    }
+
+    html += `
+        </div>
+      </div>
+
+      <div class="briefing-section">
+        <div class="briefing-section-header">📋 Task Picture</div>
+        <div class="task-stats">
+          <div class="task-stat-box">
+            <div class="task-stat-number">${bench.length}</div>
+            <div class="task-stat-label">Bench</div>
+          </div>
+          <div class="task-stat-box">
+            <div class="task-stat-number">${inboxCount}</div>
+            <div class="task-stat-label">Inbox</div>
+          </div>
+          <div class="task-stat-box">
+            <div class="task-stat-number">${dueWeek.length}</div>
+            <div class="task-stat-label">Due This Week</div>
+          </div>
+        </div>
+    `;
+
+    if (bench.length > 0) {
+      html += '<strong style="font-size: 0.9rem; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">Active Bench:</strong>';
+      html += '<div class="task-list">';
+      bench.slice(0, 5).forEach(task => {
+        const statusColors = { inbox: '#6366f1', bench: '#06b6d4', shelf: '#8b5cf6', deferred: '#f59e0b', someday: '#6b7280' };
+        html += `
+          <div class="task-item">
+            <div class="task-status-dot" style="background: ${statusColors[task.status] || '#ccc'};"></div>
+            <div class="task-item-text">${escapeHTML(task.title)}</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    html += `
+      </div>
+
+      <div class="briefing-section">
+        <div class="briefing-section-header">📊 Thread Health</div>
+        <div class="thread-health-summary">
+    `;
+
+    const active = threads.filter(t => t.health === 'active').length;
+    const cooling = threads.filter(t => t.health === 'cooling').length;
+    const cold = threads.filter(t => t.health === 'cold').length;
+
+    html += `
+          <div class="health-count-box active">
+            <div class="health-count">${active}</div>
+            <div class="health-label">Active</div>
+          </div>
+          <div class="health-count-box cooling">
+            <div class="health-count">${cooling}</div>
+            <div class="health-label">Cooling</div>
+          </div>
+          <div class="health-count-box cold">
+            <div class="health-count">${cold}</div>
+            <div class="health-label">Cold</div>
+          </div>
+        </div>
+    `;
+
+    if (threads.length > 0) {
+      html += '<div class="threads-grid">';
+      const healthOrder = { active: 0, cooling: 1, cold: 2 };
+      threads.sort((a, b) => healthOrder[a.health] - healthOrder[b.health]).slice(0, 6).forEach(thread => {
+        const healthDot = `<span class="thread-health-dot" style="background: ${thread.health === 'active' ? '#4ade80' : thread.health === 'cooling' ? '#facc15' : '#6b7280'};"></span>`;
+        const daysSince = Math.floor((new Date() - new Date(thread.last_activity)) / (1000 * 60 * 60 * 24));
+        html += `
+          <div class="thread-card-brief ${thread.health}">
+            <div class="thread-name">${healthDot} ${escapeHTML(thread.display_name)}</div>
+            <div class="thread-meta">
+              ${thread.interaction_count_30d} interactions (30d)<br>
+              ${daysSince} days since activity
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+    }
+
+    html += `
+      </div>
+    `;
+
+    // Sermon seeds section
+    if (seeds.length > 0) {
+      html += `
+        <div class="briefing-section">
+          <div class="briefing-section-header">✍️ Sermon Seeds</div>
+          <div class="seeds-grid">
+      `;
+
+      seeds.forEach(seed => {
+        const typeEmoji = {
+          quote: '💬',
+          story: '📖',
+          image: '🖼️',
+          observation: '👁️',
+          theological_connection: '⛪',
+          illustration: '💡',
+          question: '❓',
+          metaphor: '🌊'
+        };
+        
+        const emoji = typeEmoji[seed.type] || '✨';
+        const richness = Array(5).fill(0).map((_, i) => i < seed.richness_scale ? '●' : '○').join('');
+        const preview = escapeHTML((seed.content || '').substring(0, 100)) + (seed.content && seed.content.length > 100 ? '...' : '');
+        
+        html += `
+          <div class="seed-card">
+            <div class="seed-type-badge">${emoji} ${seed.type.replace(/_/g, ' ')}</div>
+            <div class="seed-content">${preview}</div>
+            <div class="seed-richness" title="Richness: ${seed.richness_scale}/5">${richness}</div>
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+        </div>
+      `;
+    }
+
+    // Coaching section
+    const coachingPrompts = [
+      'What one thing from today deserves your presence and attention?',
+      'Which thread needs intentional focus this week?',
+      'Are you building or reacting? Check your Quadrant 2.',
+      'What would Enneagram 3 health look like in today\'s work?',
+      'Is this pace sustainable? Can you say no to something?',
+      'How are you extending grace to yourself today?'
+    ];
+    const coachingIndex = new Date().getDate() % coachingPrompts.length;
+    
+    html += `
+      <div class="briefing-section">
+        <div class="briefing-section-header">💡 Coaching</div>
+        <div class="coaching-box">
+          ${coachingPrompts[coachingIndex]}
+        </div>
+      </div>
+
+      <div class="briefing-footer">
+        Briefing generated at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+      </div>
+    `;
+
+    document.getElementById('briefing-content').innerHTML = html;
   }
 
   async function surfaceDeferredTasks() {
