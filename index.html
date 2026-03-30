@@ -870,6 +870,105 @@
       position: relative;
     }
 
+    /* — Select mode — */
+    .select-toggle {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.3rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.15s ease;
+    }
+
+    .select-toggle:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .select-toggle.active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      font-weight: 500;
+    }
+
+    body.select-mode .task {
+      cursor: pointer;
+    }
+
+    body.select-mode .task .task-checkbox,
+    body.select-mode .task .task-actions-wrap,
+    body.select-mode .task .drag-handle {
+      display: none;
+    }
+
+    .task.selected {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    }
+
+    .batch-bar {
+      display: none;
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.5rem 0.75rem;
+      z-index: 500;
+      box-shadow: 0 8px 24px var(--shadow);
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .batch-bar.active {
+      display: flex;
+    }
+
+    .batch-bar .batch-count {
+      font-size: 0.8125rem;
+      color: var(--accent);
+      font-weight: 600;
+      white-space: nowrap;
+      padding-right: 0.5rem;
+      border-right: 1px solid var(--border);
+      margin-right: 0.25rem;
+    }
+
+    .batch-bar button {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .batch-bar button:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+
+    .batch-bar button.batch-done {
+      background: var(--success);
+      color: #fff;
+      border-color: var(--success);
+    }
+
+    .batch-bar button.batch-cancel {
+      color: var(--text-muted);
+    }
+
     .defer-modal-overlay {
       display: none;
       position: fixed;
@@ -1124,6 +1223,7 @@
           <select id="filter-tag" onchange="renderTasks()">
             <option value="all">All tags</option>
           </select>
+          <button class="select-toggle" id="select-toggle" onclick="toggleSelectMode()">Select</button>
         </div>
         <div class="quick-add">
           <input type="text" id="quick-add-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')handleQuickAdd()">
@@ -1168,6 +1268,17 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="batch-bar" id="batch-bar">
+  <span class="batch-count" id="batch-count">0 selected</span>
+  <button onclick="batchMove('bench')">→ Bench</button>
+  <button onclick="batchMove('inbox')">→ Inbox</button>
+  <button onclick="batchMove('shelf')">→ Shelf</button>
+  <button onclick="batchMove('deferred')">→ Deferred</button>
+  <button onclick="batchMove('someday')">→ Someday</button>
+  <button class="batch-done" onclick="batchMove('done')">Done</button>
+  <button class="batch-cancel" onclick="toggleSelectMode()">Cancel</button>
 </div>
 
 <div class="defer-modal-overlay" id="defer-modal-overlay" onclick="closeDeferModal(event)">
@@ -1422,9 +1533,9 @@
     const dragHandle = isDone ? '' : `<div class="drag-handle" title="Drag to move" ontouchstart="onTouchDragStart(event, '${task.id}', '${task.status}')" ontouchmove="onTouchDragMove(event)" ontouchend="onTouchDragEnd(event)">⠿</div>`;
 
     return `
-      <div class="task" data-id="${task.id}" ${dragAttrs}>
+      <div class="task" data-id="${task.id}" ${dragAttrs} onclick="toggleTaskSelection(event, '${task.id}')">
         ${dragHandle}
-        <div class="task-checkbox ${checked}" onclick="toggleComplete('${task.id}', ${isDone})"></div>
+        <div class="task-checkbox ${checked}" onclick="if(!selectMode){event.stopPropagation();toggleComplete('${task.id}', ${isDone})}"></div>
         <div class="task-content">
           <div class="task-name ${completedClass}">${escapeHTML(task.name)}</div>
           ${tags.length ? `<div class="task-meta">${tags.join('')}</div>` : ''}
@@ -1503,6 +1614,9 @@
   }
 
   let pendingDeferTaskId = null;
+  let selectMode = false;
+  let selectedTaskIds = new Set();
+  let pendingBatchDefer = false;
 
   async function moveTask(id, newStatus) {
     closeAllMenus();
@@ -1535,6 +1649,7 @@
     if (event && event.target !== event.currentTarget) return;
     document.getElementById('defer-modal-overlay').classList.remove('active');
     pendingDeferTaskId = null;
+    pendingBatchDefer = false;
   }
 
   function setDeferDate(shortcut) {
@@ -1567,10 +1682,29 @@
   }
 
   async function confirmDefer() {
-    if (!pendingDeferTaskId) return;
     const deferDate = document.getElementById('defer-date-input').value;
     if (!deferDate) return;
 
+    // Batch defer mode
+    if (pendingDeferTaskId === '__batch__' && selectedTaskIds.size > 0) {
+      const ids = [...selectedTaskIds];
+      const { error } = await sb
+        .from('tasks')
+        .update({ status: 'deferred', defer_date: deferDate })
+        .in('id', ids);
+
+      document.getElementById('defer-modal-overlay').classList.remove('active');
+      pendingDeferTaskId = null;
+      pendingBatchDefer = false;
+      if (!error) {
+        toggleSelectMode();
+        await loadTasks();
+      }
+      return;
+    }
+
+    // Single task defer
+    if (!pendingDeferTaskId) return;
     const { error } = await sb
       .from('tasks')
       .update({ status: 'deferred', defer_date: deferDate })
@@ -1579,6 +1713,69 @@
     document.getElementById('defer-modal-overlay').classList.remove('active');
     pendingDeferTaskId = null;
     if (!error) await loadTasks();
+  }
+
+  // — Multi-select / Batch mode —
+  function toggleSelectMode() {
+    selectMode = !selectMode;
+    selectedTaskIds.clear();
+    pendingBatchDefer = false;
+    document.body.classList.toggle('select-mode', selectMode);
+    document.getElementById('select-toggle').classList.toggle('active', selectMode);
+    document.getElementById('select-toggle').textContent = selectMode ? 'Selecting...' : 'Select';
+    updateBatchBar();
+    // Remove all selected highlights
+    document.querySelectorAll('.task.selected').forEach(el => el.classList.remove('selected'));
+  }
+
+  function toggleTaskSelection(event, id) {
+    if (!selectMode) return;
+    event.stopPropagation();
+    const taskEl = event.currentTarget;
+    if (selectedTaskIds.has(id)) {
+      selectedTaskIds.delete(id);
+      taskEl.classList.remove('selected');
+    } else {
+      selectedTaskIds.add(id);
+      taskEl.classList.add('selected');
+    }
+    updateBatchBar();
+  }
+
+  function updateBatchBar() {
+    const bar = document.getElementById('batch-bar');
+    const count = document.getElementById('batch-count');
+    if (selectMode && selectedTaskIds.size > 0) {
+      bar.classList.add('active');
+      count.textContent = `${selectedTaskIds.size} selected`;
+    } else {
+      bar.classList.remove('active');
+    }
+  }
+
+  async function batchMove(targetStatus) {
+    if (selectedTaskIds.size === 0) return;
+
+    if (targetStatus === 'deferred') {
+      pendingBatchDefer = true;
+      pendingDeferTaskId = '__batch__';
+      showDeferModal();
+      return;
+    }
+
+    const ids = [...selectedTaskIds];
+    const update = { status: targetStatus };
+    if (targetStatus === 'done') update.completed_at = new Date().toISOString();
+
+    const { error } = await sb
+      .from('tasks')
+      .update(update)
+      .in('id', ids);
+
+    if (!error) {
+      toggleSelectMode();
+      await loadTasks();
+    }
   }
 
   async function deleteTask(id) {
