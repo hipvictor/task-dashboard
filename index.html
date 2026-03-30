@@ -277,6 +277,62 @@
       background: var(--surface-hover);
     }
 
+    /* ── Tab Navigation ── */
+    .tab-nav {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      background: var(--bg);
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      font-family: var(--font);
+      transition: all 0.2s ease;
+      border-bottom: 2px solid transparent;
+      position: relative;
+      top: 1px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── Content Views ── */
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 0;
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: calc(100vh - 57px);
+    }
+
+    .view.active.people-view,
+    .view.active.threads-view {
+      display: block;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.25rem 1.5rem;
+      min-height: calc(100vh - 57px);
+    }
+
     .main {
       display: grid;
       grid-template-columns: 1fr 320px;
@@ -308,6 +364,238 @@
     .right-col {
       padding: 1.25rem;
       overflow-y: auto;
+    }
+
+    /* ── People View ── */
+    .people-view {
+      display: none !important;
+    }
+
+    .people-view.active {
+      display: block !important;
+    }
+
+    .people-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1rem;
+    }
+
+    .people-filters {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .people-filters select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .people-filters select:hover {
+      border-color: var(--accent);
+    }
+
+    .people-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .people-card:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+
+    .person-header {
+      display: flex;
+      align-items: start;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .person-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .person-star {
+      font-size: 1.25rem;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.2s ease;
+    }
+
+    .person-star.starred {
+      opacity: 1;
+    }
+
+    .role-badge {
+      display: inline-block;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+
+    .role-badge.staff { background: rgba(92, 184, 92, 0.2); color: var(--success); }
+    .role-badge.lay_leader { background: rgba(162, 155, 193, 0.2); color: var(--purple); }
+    .role-badge.congregation { background: rgba(93, 109, 126, 0.2); color: #5d6d7e; }
+    .role-badge.external { background: rgba(196, 149, 106, 0.2); color: var(--accent); }
+    .role-badge.family { background: rgba(232, 168, 56, 0.2); color: var(--warning); }
+    .role-badge.visitor { background: rgba(169, 169, 169, 0.2); color: var(--text-muted); }
+
+    .person-contact {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      word-break: break-all;
+    }
+
+    .person-contact a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .person-contact a:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+
+    .person-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .person-interactions {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Threads View ── */
+    .threads-view {
+      display: none !important;
+    }
+
+    .threads-view.active {
+      display: block !important;
+    }
+
+    .threads-summary {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .threads-summary-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9375rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.active { background: var(--success); }
+    .status-dot.cooling { background: var(--warning); }
+    .status-dot.cold { background: var(--text-muted); }
+
+    .threads-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .thread-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .thread-card:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+
+    .thread-header {
+      display: flex;
+      align-items: start;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .thread-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .thread-star {
+      font-size: 1.25rem;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.2s ease;
+    }
+
+    .thread-star.starred {
+      opacity: 1;
+    }
+
+    .thread-health {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .thread-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .thread-empty {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
     }
 
     .alerts-bar {
@@ -1235,7 +1523,13 @@
     </div>
   </div>
 
-  <div class="main">
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchView('tasks')">Tasks</button>
+    <button class="tab-btn" onclick="switchView('people')">People</button>
+    <button class="tab-btn" onclick="switchView('threads')">Threads</button>
+  </div>
+
+  <div id="tasks-view" class="view active main">
     <div class="left-col">
       <div class="left-col-content">
         <div class="alerts-bar" id="alerts-bar"></div>
@@ -1344,6 +1638,27 @@
         <div id="done-tasks"></div>
       </div>
     </div>
+  </div>
+  </div>
+
+  <div id="people-view" class="view people-view">
+    <div class="people-filters">
+      <select id="people-role-filter" onchange="renderPeople()">
+        <option value="all">All Roles</option>
+        <option value="staff">Staff</option>
+        <option value="lay_leader">Lay Leaders</option>
+        <option value="congregation">Congregation</option>
+        <option value="external">External</option>
+        <option value="family">Family</option>
+        <option value="visitor">Visitor</option>
+      </select>
+    </div>
+    <div id="people-list" class="people-list"></div>
+  </div>
+
+  <div id="threads-view" class="view threads-view">
+    <div id="threads-summary" class="threads-summary"></div>
+    <div id="threads-grid" class="threads-grid"></div>
   </div>
 </div>
 
@@ -1483,6 +1798,241 @@
     await loadTasks();
     await loadAgenda();
     renderCoachingCard();
+  }
+
+  // ── View Switching ──
+  function switchView(viewName) {
+    // Hide all views
+    document.getElementById('tasks-view').classList.remove('active');
+    document.getElementById('people-view').classList.remove('active');
+    document.getElementById('threads-view').classList.remove('active');
+
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+    // Show selected view and activate tab
+    if (viewName === 'tasks') {
+      document.getElementById('tasks-view').classList.add('active');
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    } else if (viewName === 'people') {
+      document.getElementById('people-view').classList.add('active');
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      loadPeople();
+    } else if (viewName === 'threads') {
+      document.getElementById('threads-view').classList.add('active');
+      document.querySelectorAll('.tab-btn')[2].classList.add('active');
+      loadThreads();
+    }
+  }
+
+  // ── People View ──
+  let peopleCache = null;
+  let interactionsCache = null;
+
+  async function loadPeople() {
+    if (peopleCache && interactionsCache) {
+      renderPeople();
+      return;
+    }
+
+    try {
+      // Load people
+      const { data: people, error: peopleErr } = await sb.from('people').select('*').order('canonical_name');
+      if (peopleErr) throw peopleErr;
+
+      // Load interactions from last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const { data: interactions, error: interErr } = await sb
+        .from('interactions')
+        .select('person_id, interaction_date, summary, signal_weight')
+        .gte('interaction_date', thirtyDaysAgo.toISOString());
+      if (interErr) throw interErr;
+
+      peopleCache = people || [];
+      interactionsCache = interactions || [];
+      renderPeople();
+    } catch (e) {
+      console.error('Error loading people:', e);
+      document.getElementById('people-list').innerHTML = '<div class="thread-empty">Error loading people</div>';
+    }
+  }
+
+  function renderPeople() {
+    const filter = document.getElementById('people-role-filter').value;
+    const container = document.getElementById('people-list');
+
+    // Aggregate interactions by person
+    const interactionsByPerson = {};
+    (interactionsCache || []).forEach(inter => {
+      if (!interactionsByPerson[inter.person_id]) {
+        interactionsByPerson[inter.person_id] = { count: 0, recent: [] };
+      }
+      interactionsByPerson[inter.person_id].count++;
+      if (interactionsByPerson[inter.person_id].recent.length < 2) {
+        interactionsByPerson[inter.person_id].recent.push(inter.summary);
+      }
+    });
+
+    // Filter and sort people
+    let filteredPeople = (peopleCache || []).filter(p => {
+      if (filter === 'all') return true;
+      return p.role === filter;
+    });
+
+    filteredPeople.sort((a, b) => {
+      const aCount = interactionsByPerson[a.id]?.count || 0;
+      const bCount = interactionsByPerson[b.id]?.count || 0;
+      if (bCount !== aCount) return bCount - aCount;
+      return a.canonical_name.localeCompare(b.canonical_name);
+    });
+
+    if (filteredPeople.length === 0) {
+      container.innerHTML = '<div class="thread-empty">No people found</div>';
+      return;
+    }
+
+    container.innerHTML = filteredPeople.map(person => {
+      const interData = interactionsByPerson[person.id];
+      const count = interData?.count || 0;
+      const recentSummaries = (interData?.recent || []).filter(Boolean);
+
+      return `
+        <div class="people-card">
+          <div class="person-header">
+            <div class="person-name">${escapeHTML(person.name || person.canonical_name)}</div>
+            <span class="person-star ${person.starred ? 'starred' : ''}" onclick="togglePersonStar('${person.id}')">⭐</span>
+          </div>
+          <span class="role-badge ${person.role}">${escapeHTML(person.role)}</span>
+          ${person.email ? `<div class="person-contact"><a href="mailto:${escapeHTML(person.email)}">${escapeHTML(person.email)}</a></div>` : ''}
+          ${person.phone ? `<div class="person-contact">${escapeHTML(person.phone)}</div>` : ''}
+          <div class="person-stats">
+            <span>${count} interactions (30d)</span>
+          </div>
+          ${recentSummaries.length > 0 ? `<div class="person-interactions"><strong>Recent:</strong> ${recentSummaries.map(s => escapeHTML(s)).join(', ')}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function togglePersonStar(personId) {
+    // Update UI
+    const cards = document.querySelectorAll('.people-card');
+    cards.forEach(card => {
+      if (card.querySelector('.person-star').onclick.toString().includes(personId)) {
+        const star = card.querySelector('.person-star');
+        star.classList.toggle('starred');
+      }
+    });
+
+    // Update DB
+    const person = peopleCache.find(p => p.id === personId);
+    if (person) {
+      person.starred = !person.starred;
+      sb.from('people').update({ starred: person.starred }).eq('id', personId).catch(e => console.error('Error updating star:', e));
+    }
+  }
+
+  // ── Threads View ──
+  let threadsCache = null;
+
+  async function loadThreads() {
+    if (threadsCache) {
+      renderThreads();
+      return;
+    }
+
+    try {
+      const { data, error } = await sb.rpc('thread_health');
+      if (error) throw error;
+      threadsCache = data || [];
+      renderThreads();
+    } catch (e) {
+      console.error('Error loading threads:', e);
+      document.getElementById('threads-grid').innerHTML = '<div class="thread-empty">Error loading threads</div>';
+    }
+  }
+
+  function renderThreads() {
+    const threads = threadsCache || [];
+
+    // Count health statuses
+    const active = threads.filter(t => t.health === 'active').length;
+    const cooling = threads.filter(t => t.health === 'cooling').length;
+    const cold = threads.filter(t => t.health === 'cold').length;
+
+    document.getElementById('threads-summary').innerHTML = `
+      <div class="threads-summary-item">
+        <span class="status-dot active"></span>
+        <span>${active} Active</span>
+      </div>
+      <div class="threads-summary-item">
+        <span class="status-dot cooling"></span>
+        <span>${cooling} Cooling</span>
+      </div>
+      <div class="threads-summary-item">
+        <span class="status-dot cold"></span>
+        <span>${cold} Cold</span>
+      </div>
+    `;
+
+    // Sort: starred first, then by health, then by last activity
+    const healthOrder = { active: 0, cooling: 1, cold: 2 };
+    threads.sort((a, b) => {
+      if (b.starred !== a.starred) return b.starred ? 1 : -1;
+      if (healthOrder[a.health] !== healthOrder[b.health]) {
+        return healthOrder[a.health] - healthOrder[b.health];
+      }
+      return new Date(b.last_activity || 0) - new Date(a.last_activity || 0);
+    });
+
+    const container = document.getElementById('threads-grid');
+    if (threads.length === 0) {
+      container.innerHTML = '<div class="thread-empty">No threads found</div>';
+      return;
+    }
+
+    container.innerHTML = threads.map(thread => {
+      const daysSince = thread.last_activity
+        ? Math.floor((Date.now() - new Date(thread.last_activity)) / (1000 * 60 * 60 * 24))
+        : null;
+      const daysLabel = daysSince === null ? 'No activity' : `${daysSince} day${daysSince !== 1 ? 's' : ''} ago`;
+
+      return `
+        <div class="thread-card">
+          <div class="thread-header">
+            <div class="thread-name">${escapeHTML(thread.display_name)}</div>
+            <span class="thread-star ${thread.starred ? 'starred' : ''}" onclick="toggleThreadStar('${thread.id}')">⭐</span>
+          </div>
+          <div class="thread-health">
+            <span class="status-dot ${thread.health}"></span>
+            <span>${thread.health}</span>
+          </div>
+          <div class="thread-stats">
+            <span>${thread.interaction_count_30d} interactions (30d)</span>
+            <span>${daysLabel}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleThreadStar(threadId) {
+    // Update UI
+    const cards = document.querySelectorAll('.thread-card');
+    cards.forEach(card => {
+      if (card.querySelector('.thread-star').onclick.toString().includes(threadId)) {
+        const star = card.querySelector('.thread-star');
+        star.classList.toggle('starred');
+      }
+    });
+
+    // Update DB
+    const thread = threadsCache.find(t => t.id === threadId);
+    if (thread) {
+      thread.starred = !thread.starred;
+      sb.from('threads').update({ starred: thread.starred }).eq('id', threadId).catch(e => console.error('Error updating star:', e));
+    }
   }
 
   async function surfaceDeferredTasks() {
