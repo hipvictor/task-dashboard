@@ -870,6 +870,111 @@
       position: relative;
     }
 
+    .defer-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .defer-modal-overlay.active {
+      display: flex;
+    }
+
+    .defer-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 280px;
+      box-shadow: 0 8px 24px var(--shadow);
+    }
+
+    .defer-modal h3 {
+      font-size: 0.9375rem;
+      margin-bottom: 0.75rem;
+      color: var(--text);
+    }
+
+    .defer-modal .defer-shortcuts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .defer-modal .defer-shortcuts button {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.15s ease;
+    }
+
+    .defer-modal .defer-shortcuts button:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .defer-modal input[type="date"] {
+      width: 100%;
+      padding: 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .defer-modal .defer-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .defer-modal .defer-actions button {
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      font-family: var(--font);
+      border: 1px solid var(--border);
+      transition: all 0.15s ease;
+    }
+
+    .defer-modal .defer-actions .cancel-btn {
+      background: var(--bg);
+      color: var(--text-muted);
+    }
+
+    .defer-modal .defer-actions .confirm-btn {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+      font-weight: 500;
+    }
+
+    .defer-modal .defer-actions button:hover {
+      opacity: 0.85;
+    }
+
+    .defer-date-badge {
+      font-size: 0.6875rem;
+      color: var(--accent);
+      margin-left: 0.25rem;
+      opacity: 0.8;
+    }
+
     .filter-bar {
       display: flex;
       gap: 0.5rem;
@@ -994,6 +1099,16 @@
             <div id="someday-tasks" class="drop-zone" data-pool="someday" data-pool-label="Drop here → Someday" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'someday')"></div>
           </div>
         </div>
+
+        <div class="section" id="deferred-section">
+          <div class="section-header collapsible-header" onclick="toggleCollapsible('deferred')">
+            <span class="section-title"><span class="arrow" id="deferred-arrow">▸</span> ⏳ Deferred</span>
+            <span class="section-count" id="deferred-count">0</span>
+          </div>
+          <div class="collapsible-body" id="deferred-body">
+            <div id="deferred-tasks" class="drop-zone" data-pool="deferred" data-pool-label="Drop here → Deferred" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'deferred')"></div>
+          </div>
+        </div>
       </div>
 
       <div class="left-col-bottom">
@@ -1051,6 +1166,23 @@
         <div class="right-section-title">✅ Recently Completed</div>
         <div id="done-tasks"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="defer-modal-overlay" id="defer-modal-overlay" onclick="closeDeferModal(event)">
+  <div class="defer-modal" onclick="event.stopPropagation()">
+    <h3>Defer until when?</h3>
+    <div class="defer-shortcuts">
+      <button onclick="setDeferDate('tomorrow')">Tomorrow</button>
+      <button onclick="setDeferDate('next-week')">Next Week</button>
+      <button onclick="setDeferDate('next-month')">Next Month</button>
+      <button onclick="setDeferDate('2-weeks')">2 Weeks</button>
+    </div>
+    <input type="date" id="defer-date-input" onchange="updateDeferPreview()">
+    <div class="defer-actions">
+      <button class="cancel-btn" onclick="closeDeferModal()">Cancel</button>
+      <button class="confirm-btn" onclick="confirmDefer()">Defer</button>
     </div>
   </div>
 </div>
@@ -1225,6 +1357,12 @@
     const inbox = getFilteredTasks('inbox');
     const shelf = getFilteredTasks('shelf');
     const someday = getFilteredTasks('someday');
+    const deferred = getFilteredTasks('deferred')
+      .sort((a, b) => {
+        if (!a.defer_date) return 1;
+        if (!b.defer_date) return -1;
+        return new Date(a.defer_date) - new Date(b.defer_date);
+      });
     const done = allTasks
       .filter(t => t.status === 'done' && t.completed_at)
       .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
@@ -1234,12 +1372,14 @@
     document.getElementById('inbox-tasks').innerHTML = inbox.map(t => taskHTML(t)).join('');
     document.getElementById('shelf-tasks').innerHTML = shelf.map(t => taskHTML(t)).join('');
     document.getElementById('someday-tasks').innerHTML = someday.map(t => taskHTML(t)).join('');
+    document.getElementById('deferred-tasks').innerHTML = deferred.map(t => taskHTML(t)).join('');
     document.getElementById('done-tasks').innerHTML = done.map(t => taskHTML(t, true)).join('');
 
     document.getElementById('bench-count').textContent = bench.length;
     document.getElementById('inbox-count').textContent = inbox.length;
     document.getElementById('shelf-count').textContent = shelf.length;
     document.getElementById('someday-count').textContent = someday.length;
+    document.getElementById('deferred-count').textContent = deferred.length;
   }
 
   function taskHTML(task, isDone = false) {
@@ -1257,6 +1397,12 @@
       if (days < 0) tags.push(`<span class="tag overdue">overdue ${Math.abs(days)}d</span>`);
       else if (days <= 3) tags.push(`<span class="tag due">due in ${days}d</span>`);
       else tags.push(`<span class="tag due">due ${formatDate(task.due_date)}</span>`);
+    }
+    if (task.status === 'deferred' && task.defer_date) {
+      const dDays = daysUntil(task.defer_date);
+      if (dDays <= 0) tags.push(`<span class="tag overdue">surfaces today</span>`);
+      else if (dDays === 1) tags.push(`<span class="tag">surfaces tomorrow</span>`);
+      else tags.push(`<span class="tag">surfaces in ${dDays}d</span>`);
     }
 
     const moveOptions = isDone ? '' : `
@@ -1356,13 +1502,65 @@
     if (!error) await loadTasks();
   }
 
+  let pendingDeferTaskId = null;
+
   async function moveTask(id, newStatus) {
     closeAllMenus();
+    if (newStatus === 'deferred') {
+      pendingDeferTaskId = id;
+      showDeferModal();
+      return;
+    }
+    const update = { status: newStatus };
+    if (newStatus !== 'deferred') update.defer_date = null;
     const { error } = await sb
       .from('tasks')
-      .update({ status: newStatus })
+      .update(update)
       .eq('id', id);
 
+    if (!error) await loadTasks();
+  }
+
+  function showDeferModal() {
+    const modal = document.getElementById('defer-modal-overlay');
+    const input = document.getElementById('defer-date-input');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    input.value = tomorrow.toISOString().split('T')[0];
+    input.min = new Date().toISOString().split('T')[0];
+    modal.classList.add('active');
+  }
+
+  function closeDeferModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('defer-modal-overlay').classList.remove('active');
+    pendingDeferTaskId = null;
+  }
+
+  function setDeferDate(shortcut) {
+    const input = document.getElementById('defer-date-input');
+    const d = new Date();
+    switch (shortcut) {
+      case 'tomorrow': d.setDate(d.getDate() + 1); break;
+      case 'next-week': d.setDate(d.getDate() + (8 - d.getDay()) % 7 || 7); break;
+      case '2-weeks': d.setDate(d.getDate() + 14); break;
+      case 'next-month': d.setMonth(d.getMonth() + 1); d.setDate(1); break;
+    }
+    input.value = d.toISOString().split('T')[0];
+  }
+
+  async function confirmDefer() {
+    if (!pendingDeferTaskId) return;
+    const deferDate = document.getElementById('defer-date-input').value;
+    if (!deferDate) return;
+
+    const { error } = await sb
+      .from('tasks')
+      .update({ status: 'deferred', defer_date: deferDate })
+      .eq('id', pendingDeferTaskId);
+
+    document.getElementById('defer-modal-overlay').classList.remove('active');
+    pendingDeferTaskId = null;
     if (!error) await loadTasks();
   }
 
