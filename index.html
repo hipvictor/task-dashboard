@@ -1411,7 +1411,7 @@
         <div class="move-menu" id="menu-${task.id}" style="display:none">
           ${task.status !== 'bench' ? `<button onclick="moveTask('${task.id}','bench')">→ Bench</button>` : ''}
           ${task.status !== 'shelf' ? `<button onclick="moveTask('${task.id}','shelf')">→ Shelf</button>` : ''}
-          ${task.status !== 'deferred' ? `<button onclick="moveTask('${task.id}','deferred')">→ Deferred</button>` : ''}
+          ${task.status !== 'deferred' ? `<button onclick="moveTask('${task.id}','deferred')">→ Deferred</button>` : `<button onclick="rescheduleTask('${task.id}')">Reschedule</button>`}
           ${task.status !== 'someday' ? `<button onclick="moveTask('${task.id}','someday')">→ Someday</button>` : ''}
           <button onclick="deleteTask('${task.id}')" style="color:var(--danger)">Delete</button>
         </div>
@@ -1547,6 +1547,23 @@
       case 'next-month': d.setMonth(d.getMonth() + 1); d.setDate(1); break;
     }
     input.value = d.toISOString().split('T')[0];
+  }
+
+  function rescheduleTask(id) {
+    closeAllMenus();
+    pendingDeferTaskId = id;
+    const task = allTasks.find(t => t.id === id);
+    const modal = document.getElementById('defer-modal-overlay');
+    const input = document.getElementById('defer-date-input');
+    if (task && task.defer_date) {
+      input.value = task.defer_date;
+    } else {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      input.value = tomorrow.toISOString().split('T')[0];
+    }
+    input.min = new Date().toISOString().split('T')[0];
+    modal.classList.add('active');
   }
 
   async function confirmDefer() {
