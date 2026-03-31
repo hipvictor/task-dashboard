@@ -1920,6 +1920,53 @@
       border-top: 1px solid var(--border);
       margin-top: 2rem;
     }
+
+    /* Triage Tab Styles */
+    .triage-new-badge {
+      position: absolute;
+      top: -2px;
+      right: -4px;
+      color: #d4a03c;
+      font-size: 0.7rem;
+      animation: triage-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes triage-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .triage-meta {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .triage-run-label {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-style: normal;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .triage-new-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #d4a03c;
+      font-style: normal;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
@@ -1966,6 +2013,7 @@
     <button class="tab-btn" onclick="switchView('people')">People</button>
     <button class="tab-btn" onclick="switchView('threads')">Threads</button>
     <button class="tab-btn" onclick="switchView('briefing')">Briefing</button>
+    <button class="tab-btn" onclick="switchView('triage')" style="position:relative;">Triage<span class="triage-new-badge" id="triage-new-badge" style="display:none;">★</span></button>
   </div>
   <div id="tasks-view" class="view active main">
     <div class="left-col">
@@ -2110,6 +2158,19 @@
       <div class="briefing-loading">Loading briefing...</div>
     </div>
   </div>
+
+  <div id="triage-view" class="view briefing-view">
+    <div class="briefing-header">
+      <div class="briefing-title-wrap">
+        <h2 class="briefing-title">Email Triage</h2>
+        <button class="refresh-btn" onclick="loadTriage(true)" title="Refresh triage">🔄</button>
+      </div>
+      <div class="triage-meta" id="triage-meta"></div>
+    </div>
+    <div class="briefing-content" id="triage-content">
+      <div class="briefing-loading">Loading triage summary...</div>
+    </div>
+  </div>
 </div>
 
 <div class="batch-bar" id="batch-bar">
@@ -2248,6 +2309,7 @@
     await loadTasks();
     await loadAgenda();
     renderCoachingCard();
+    checkTriageNew();
   }
 
   // ── View Switching ──
@@ -2257,6 +2319,7 @@
     document.getElementById('people-view').classList.remove('active');
     document.getElementById('threads-view').classList.remove('active');
     document.getElementById('briefing-view').classList.remove('active');
+    document.getElementById('triage-view').classList.remove('active');
 
     // Remove active class from all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -2277,6 +2340,10 @@
       document.getElementById('briefing-view').classList.add('active');
       document.querySelectorAll('.tab-btn')[3].classList.add('active');
       loadBriefing();
+    } else if (viewName === 'triage') {
+      document.getElementById('triage-view').classList.add('active');
+      document.querySelectorAll('.tab-btn')[4].classList.add('active');
+      loadTriage();
     }
   }
 
@@ -2545,6 +2612,119 @@
   }
 
   // renderBriefing removed — briefing HTML is pre-built and stored in briefings table
+
+  // ── Triage View ──
+  let triageCache = null;
+
+  async function loadTriage(forceRefresh) {
+    const content = document.getElementById('triage-content');
+    const meta = document.getElementById('triage-meta');
+
+    if (triageCache && !forceRefresh) {
+      content.innerHTML = triageCache.html;
+      meta.innerHTML = triageCache.meta;
+      markTriageViewed();
+      return;
+    }
+
+    content.innerHTML = '<div class="briefing-loading">Loading triage summary...</div>';
+    meta.innerHTML = '';
+
+    try {
+      // Fetch latest triage summary (most recent run across all dates)
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Try today first
+      let { data: triage, error } = await sb.from('triage_summaries')
+        .select('html_content, triage_date, run_label, updated_at')
+        .eq('triage_date', todayStr)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !triage) {
+        // Fall back to most recent
+        const { data: recent, error: recentErr } = await sb.from('triage_summaries')
+          .select('html_content, triage_date, run_label, updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (recentErr || !recent) throw new Error('No triage summaries found');
+        triage = recent;
+      }
+
+      // Build date + run label display
+      const tDate = new Date(triage.triage_date + 'T12:00:00');
+      const dateOpts = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+      const dateStr = tDate.toLocaleDateString('en-US', dateOpts);
+
+      // Check if this is new since last viewed
+      const lastViewed = localStorage.getItem('triage_last_viewed');
+      const triageUpdated = new Date(triage.updated_at).getTime();
+      const isNew = !lastViewed || triageUpdated > parseInt(lastViewed, 10);
+
+      let staleNotice = '';
+      if (triage.triage_date !== todayStr) {
+        staleNotice = `<div style="background: var(--surface); border-left: 3px solid var(--accent); padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted); border-radius: 4px;">Showing triage from ${tDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}. Today's triage hasn't run yet.</div>`;
+      }
+
+      const newIndicator = isNew ? '<span class="triage-new-indicator">★ New</span>' : '';
+      const metaHTML = `${dateStr} <span class="triage-run-label">${triage.run_label}</span> ${newIndicator}`;
+
+      triageCache = {
+        html: staleNotice + triage.html_content,
+        meta: metaHTML
+      };
+
+      content.innerHTML = triageCache.html;
+      meta.innerHTML = triageCache.meta;
+
+      // Mark as viewed
+      markTriageViewed();
+
+    } catch (e) {
+      console.error('Error loading triage:', e);
+      content.innerHTML = '<div class="briefing-loading" style="color: var(--danger);">No triage summary available yet. Triage summaries appear here after the email triage skill runs.</div>';
+    }
+  }
+
+  function markTriageViewed() {
+    localStorage.setItem('triage_last_viewed', Date.now().toString());
+    document.getElementById('triage-new-badge').style.display = 'none';
+  }
+
+  async function checkTriageNew() {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      let { data, error } = await sb.from('triage_summaries')
+        .select('updated_at')
+        .eq('triage_date', todayStr)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        // Check most recent
+        const { data: recent } = await sb.from('triage_summaries')
+          .select('updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        data = recent;
+      }
+
+      if (data) {
+        const lastViewed = localStorage.getItem('triage_last_viewed');
+        const triageUpdated = new Date(data.updated_at).getTime();
+        if (!lastViewed || triageUpdated > parseInt(lastViewed, 10)) {
+          document.getElementById('triage-new-badge').style.display = 'inline';
+        }
+      }
+    } catch (e) {
+      // Silently fail — badge just won't show
+    }
+  }
 
   async function surfaceDeferredTasks() {
     try {
