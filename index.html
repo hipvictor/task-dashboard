@@ -315,7 +315,8 @@
       display: none;
     }
 
-    .view.active {
+    /* Tasks view uses 2-column grid */
+    .view.active.main {
       display: grid;
       grid-template-columns: 1fr 320px;
       gap: 0;
@@ -324,6 +325,7 @@
       min-height: calc(100vh - 57px);
     }
 
+    /* People and Threads views use block layout */
     .view.active.people-view,
     .view.active.threads-view {
       display: block;
@@ -333,14 +335,9 @@
       min-height: calc(100vh - 57px);
     }
 
-    .main {
-      display: none;
-    }
-
-    .main.active {
-      display: grid;
-      grid-template-columns: 1fr 320px;
-      gap: 0;
+    /* Briefing view uses block layout */
+    .view.active.briefing-view {
+      display: block;
       max-width: 1200px;
       margin: 0 auto;
       min-height: calc(100vh - 57px);
@@ -1473,7 +1470,7 @@
     }
 
     @media (max-width: 768px) {
-      .main {
+      .view.active.main {
         grid-template-columns: 1fr;
       }
 
@@ -1482,8 +1479,38 @@
         border-bottom: 1px solid var(--border);
       }
 
+      .right-col {
+        max-height: none;
+        position: static;
+      }
+
       .theme-picker {
         display: none;
+      }
+
+      .tab-nav {
+        padding: 0 0.75rem;
+        overflow-x: auto;
+      }
+
+      .tab-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        white-space: nowrap;
+      }
+
+      .view.active.people-view,
+      .view.active.threads-view,
+      .view.active.briefing-view {
+        padding: 1rem;
+      }
+
+      .header h1 {
+        font-size: 1.25rem;
+      }
+
+      .briefing-title {
+        font-size: 1.5rem;
       }
     }
 
@@ -1935,7 +1962,6 @@
   </div>
 
   <div class="tab-nav">
-  <div class="tab-nav">
     <button class="tab-btn active" onclick="switchView('tasks')">Tasks</button>
     <button class="tab-btn" onclick="switchView('people')">People</button>
     <button class="tab-btn" onclick="switchView('threads')">Threads</button>
@@ -2071,11 +2097,6 @@
     <div id="threads-summary" class="threads-summary"></div>
     <div id="threads-grid" class="threads-grid"></div>
   </div>
-</div>
-
-<div class="batch-bar" id="batch-bar">
-  <span class="batch-count" id="batch-count">0 selected</span>
-  <button onclick="batchMove('bench')">→ Bench</button>
 
   <div id="briefing-view" class="view briefing-view">
     <div class="briefing-header">
@@ -2089,6 +2110,11 @@
       <div class="briefing-loading">Loading briefing...</div>
     </div>
   </div>
+</div>
+
+<div class="batch-bar" id="batch-bar">
+  <span class="batch-count" id="batch-count">0 selected</span>
+  <button onclick="batchMove('bench')">→ Bench</button>
   <button onclick="batchMove('inbox')">→ Inbox</button>
   <button onclick="batchMove('shelf')">→ Shelf</button>
   <button onclick="batchMove('deferred')">→ Deferred</button>
@@ -2125,7 +2151,7 @@
     document.getElementById('login-error').textContent = 'Supabase library failed to load: ' + e.message;
   }
 
-  console.log('Dashboard v14.1 loaded');
+  console.log('Dashboard v14.2 loaded');
 
   let allTasks = [];
   let openMenu = null;
