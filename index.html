@@ -689,6 +689,11 @@
       border: 1px solid rgba(196, 149, 106, 0.3);
     }
 
+    .alert-approaching {
+      background: rgba(100, 160, 220, 0.15);
+      border: 1px solid rgba(100, 160, 220, 0.3);
+    }
+
     .section {
       margin-bottom: 1.5rem;
     }
@@ -2812,13 +2817,21 @@
             : `${t.name} starts today. Move to bench?` });
         }
       }
+      // Approaching: deferred tasks with lead_time_days > 0 where defer_date - lead_time_days <= today
+      if (t.status === 'deferred' && t.defer_date && t.lead_time_days > 0) {
+        const deferDays = daysUntil(t.defer_date);
+        if (deferDays > 0 && deferDays <= t.lead_time_days) {
+          alerts.push({ type: 'approaching', key: `approaching-${t.id}`, text: `${t.name} starts in ${deferDays} day${deferDays !== 1 ? 's' : ''}` });
+        }
+      }
     });
 
     const visible = alerts.filter(a => !dismissed[a.key]);
 
+    const alertEmoji = { overdue: '🔴', 'due-soon': '🟡', surfaced: '🔵', approaching: '🟦' };
     bar.innerHTML = visible.map(a =>
       `<div class="alert alert-${a.type}">
-        <span>${a.type === 'overdue' ? '🔴' : a.type === 'due-soon' ? '🟡' : '🔵'} ${escapeHTML(a.text)}</span>
+        <span>${alertEmoji[a.type] || '🔵'} ${escapeHTML(a.text)}</span>
         <button class="alert-dismiss" onclick="dismissAlert('${a.key}', this.closest('.alert'))" title="Dismiss for today">✕</button>
       </div>`
     ).join('');
