@@ -813,26 +813,25 @@ function setTheme(theme) {
     renderTasks();
 
     const action = newStatus === 'done' ? 'completed' : 'uncompleted';
+    const oldStatus = task.status === newStatus ? (wasDone ? 'done' : 'shelf') : task.status;
     showToast(`Task ${action}`, {
-      undo: () => {
+      undo: async () => {
         allTasks = previousTasks;
         renderTasks();
+        await sb.from('tasks').update({ status: oldStatus, completed_at: null }).eq('id', id);
       }
     });
 
     try {
       const { error } = await sb
         .from('tasks')
-        .update({ status: newStatus })
+        .update({ status: newStatus, ...(newStatus === 'done' ? { completed_at: new Date().toISOString() } : {}) })
         .eq('id', id);
 
       if (error) {
-        // Revert on error
         allTasks = previousTasks;
         renderTasks();
         showToast(`Error: ${error.message}`, { type: 'error' });
-      } else {
-        await loadTasks();
       }
     } catch (e) {
       allTasks = previousTasks;
@@ -868,10 +867,13 @@ function setTheme(theme) {
     }
     renderTasks();
 
+    const oldStatus = task.status;
+    const oldDeferDate = task.defer_date;
     showToast(`Task moved to ${newStatus}`, {
-      undo: () => {
+      undo: async () => {
         allTasks = previousTasks;
         renderTasks();
+        await sb.from('tasks').update({ status: oldStatus, defer_date: oldDeferDate }).eq('id', id);
       }
     });
 
@@ -887,8 +889,6 @@ function setTheme(theme) {
         allTasks = previousTasks;
         renderTasks();
         showToast(`Error: ${error.message}`, { type: 'error' });
-      } else {
-        await loadTasks();
       }
     } catch (e) {
       allTasks = previousTasks;
@@ -1052,10 +1052,14 @@ function setTheme(theme) {
     allTasks = allTasks.filter(t => t.id !== id);
     renderTasks();
 
+    const taskCopy = JSON.parse(JSON.stringify(task));
     showToast('Task deleted', {
-      undo: () => {
+      undo: async () => {
         allTasks = previousTasks;
         renderTasks();
+        // Re-insert into server
+        const { id: _, ...insertData } = taskCopy;
+        await sb.from('tasks').insert({ ...insertData, id: taskCopy.id });
       }
     });
 
@@ -1066,7 +1070,6 @@ function setTheme(theme) {
         .eq('id', id);
 
       if (error) {
-        // Revert on error
         allTasks = previousTasks;
         renderTasks();
         showToast(`Error: ${error.message}`, { type: 'error' });
