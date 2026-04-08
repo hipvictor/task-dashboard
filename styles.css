@@ -2084,6 +2084,14 @@
       display: block;
     }
 
+    .search-toggle {
+      margin-left: auto;
+      border-bottom: none !important;
+      font-size: 1rem;
+      padding: 0.75rem 0.75rem;
+      flex-shrink: 0;
+    }
+
     .search-input {
       width: 100%;
       padding: 0.625rem 0.75rem 0.625rem 2rem;
