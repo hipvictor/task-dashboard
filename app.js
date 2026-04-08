@@ -76,7 +76,7 @@ window.addEventListener('online', () => {
 
 window.addEventListener('offline', () => {
   updateOnlineStatus();
-  showToast('You're offline — changes may not save', { type: 'error', duration: 5000 });
+  showToast("You're offline — changes may not save", { type: 'error', duration: 5000 });
 });
 
 document.addEventListener('DOMContentLoaded', updateOnlineStatus);
