@@ -1977,7 +1977,7 @@
     /* Toast/Undo Notification System */
     .toast-container {
       position: fixed;
-      bottom: 1.5rem;
+      bottom: 5rem;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
@@ -1985,6 +1985,17 @@
       flex-direction: column;
       gap: 0.5rem;
       align-items: center;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+    }
+
+    @media (min-width: 769px) {
+      .toast-container {
+        bottom: 1.5rem;
+      }
     }
 
     .toast {
