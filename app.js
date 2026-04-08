@@ -639,7 +639,7 @@ function setTheme(theme) {
       // Search filtering
       if (searchQuery) {
         const q = searchQuery;
-        const matchesName = t.task_name && t.task_name.toLowerCase().includes(q);
+        const matchesName = t.name && t.name.toLowerCase().includes(q);
         const matchesTags = t.tags && t.tags.some(tag => tag.toLowerCase().includes(q));
         const matchesProject = t.project && t.project.toLowerCase().includes(q);
         if (!matchesName && !matchesTags && !matchesProject) return false;
