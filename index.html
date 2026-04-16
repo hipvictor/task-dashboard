@@ -103,6 +103,17 @@
           </div>
         </div>
 
+        <div class="section" id="delegate-section">
+          <div class="section-header collapsible-header" onclick="toggleCollapsible('delegate')">
+            <span class="section-title"><span class="arrow" id="delegate-arrow">▸</span> 🤝 Delegate</span>
+            <span class="section-count" id="delegate-count">0</span>
+          </div>
+          <div class="collapsible-body" id="delegate-body">
+            <div class="delegate-filter-bar" id="delegate-filter-bar"></div>
+            <div id="delegate-tasks" class="drop-zone" data-pool="delegate" data-pool-label="Drop here → Delegate" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'delegate')"></div>
+          </div>
+        </div>
+
         <div class="section" id="deferred-section">
           <div class="section-header collapsible-header" onclick="toggleCollapsible('deferred')">
             <span class="section-title"><span class="arrow" id="deferred-arrow">▸</span> ⏳ Deferred</span>
@@ -135,6 +146,7 @@
             <option value="inbox">Inbox</option>
             <option value="bench">Bench</option>
             <option value="shelf">Shelf</option>
+            <option value="delegate">Delegate</option>
             <option value="deferred">Deferred</option>
             <option value="someday">Someday</option>
           </select>
@@ -212,6 +224,7 @@
   <button onclick="batchMove('bench')">→ Bench</button>
   <button onclick="batchMove('inbox')">→ Inbox</button>
   <button onclick="batchMove('shelf')">→ Shelf</button>
+  <button onclick="batchMove('delegate')">→ Delegate</button>
   <button onclick="batchMove('deferred')">→ Deferred</button>
   <button onclick="batchMove('someday')">→ Someday</button>
   <button class="batch-done" onclick="batchMove('done')">Done</button>

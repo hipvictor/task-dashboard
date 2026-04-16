@@ -8,7 +8,7 @@ try {
   document.getElementById('login-error').textContent = 'Supabase library failed to load: ' + e.message;
 }
 
-console.log('Dashboard v16 loaded');
+console.log('Dashboard v17 loaded — delegate pool + notes');
 
 let allTasks = [];
 let openMenu = null;
@@ -642,18 +642,23 @@ function setTheme(theme) {
         const matchesName = t.name && t.name.toLowerCase().includes(q);
         const matchesTags = t.tags && t.tags.some(tag => tag.toLowerCase().includes(q));
         const matchesProject = t.project && t.project.toLowerCase().includes(q);
-        if (!matchesName && !matchesTags && !matchesProject) return false;
+        const matchesNotes = t.capture_notes && t.capture_notes.toLowerCase().includes(q);
+        const matchesDelegated = t.delegated_to && t.delegated_to.toLowerCase().includes(q);
+        if (!matchesName && !matchesTags && !matchesProject && !matchesNotes && !matchesDelegated) return false;
       }
 
       return true;
     });
   }
 
+  let delegateTagFilter = null;
+
   function renderTasks() {
     const bench = getFilteredTasks('bench');
     const inbox = getFilteredTasks('inbox');
     const shelf = getFilteredTasks('shelf');
     const someday = getFilteredTasks('someday');
+    let delegate = getFilteredTasks('delegate');
     const deferred = getFilteredTasks('deferred')
       .sort((a, b) => {
         if (!a.defer_date) return 1;
@@ -665,10 +670,22 @@ function setTheme(theme) {
       .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
       .slice(0, 5);
 
+    // Delegate tag filter bar
+    renderDelegateFilterBar(delegate);
+    if (delegateTagFilter) {
+      delegate = delegate.filter(t => {
+        const taskTags = (t.tags || []).map(tag => tag.toLowerCase());
+        const delegatedTo = (t.delegated_to || '').toLowerCase();
+        const filterLower = delegateTagFilter.toLowerCase();
+        return taskTags.includes(filterLower) || delegatedTo === filterLower;
+      });
+    }
+
     document.getElementById('bench-tasks').innerHTML = bench.map(t => taskHTML(t)).join('');
     document.getElementById('inbox-tasks').innerHTML = inbox.map(t => taskHTML(t)).join('');
     document.getElementById('shelf-tasks').innerHTML = shelf.map(t => taskHTML(t)).join('');
     document.getElementById('someday-tasks').innerHTML = someday.map(t => taskHTML(t)).join('');
+    document.getElementById('delegate-tasks').innerHTML = delegate.map(t => taskHTML(t)).join('');
     document.getElementById('deferred-tasks').innerHTML = deferred.map(t => taskHTML(t)).join('');
     document.getElementById('done-tasks').innerHTML = done.map(t => taskHTML(t, true)).join('');
 
@@ -676,7 +693,35 @@ function setTheme(theme) {
     document.getElementById('inbox-count').textContent = inbox.length;
     document.getElementById('shelf-count').textContent = shelf.length;
     document.getElementById('someday-count').textContent = someday.length;
+    document.getElementById('delegate-count').textContent = delegate.length + (delegateTagFilter ? '/' + getFilteredTasks('delegate').length : '');
     document.getElementById('deferred-count').textContent = deferred.length;
+  }
+
+  function renderDelegateFilterBar(delegateTasks) {
+    const bar = document.getElementById('delegate-filter-bar');
+    if (!bar) return;
+
+    // Collect all unique tags/people from delegate tasks
+    const tagSet = new Set();
+    delegateTasks.forEach(t => {
+      if (t.delegated_to) tagSet.add(t.delegated_to);
+      (t.tags || []).forEach(tag => tagSet.add(tag));
+    });
+
+    if (tagSet.size === 0) { bar.innerHTML = ''; return; }
+
+    const sortedTags = [...tagSet].sort();
+    let html = `<button class="delegate-tag-btn ${!delegateTagFilter ? 'active' : ''}" onclick="setDelegateFilter(null)">All</button>`;
+    sortedTags.forEach(tag => {
+      const isActive = delegateTagFilter && delegateTagFilter.toLowerCase() === tag.toLowerCase();
+      html += `<button class="delegate-tag-btn ${isActive ? 'active' : ''}" onclick="setDelegateFilter('${escapeHTML(tag)}')">${escapeHTML(tag)}</button>`;
+    });
+    bar.innerHTML = html;
+  }
+
+  function setDelegateFilter(tag) {
+    delegateTagFilter = (delegateTagFilter === tag) ? null : tag;
+    renderTasks();
   }
 
   function taskHTML(task, isDone = false) {
@@ -708,6 +753,7 @@ function setTheme(theme) {
         <div class="move-menu" id="menu-${task.id}" style="display:none">
           ${task.status !== 'bench' ? `<button onclick="moveTask('${task.id}','bench')">→ Bench</button>` : ''}
           ${task.status !== 'shelf' ? `<button onclick="moveTask('${task.id}','shelf')">→ Shelf</button>` : ''}
+          ${task.status !== 'delegate' ? `<button onclick="moveTask('${task.id}','delegate')">→ Delegate</button>` : ''}
           ${task.status !== 'deferred' ? `<button onclick="moveTask('${task.id}','deferred')">→ Deferred</button>` : `<button onclick="rescheduleTask('${task.id}')">Reschedule</button>`}
           ${task.status !== 'someday' ? `<button onclick="moveTask('${task.id}','someday')">→ Someday</button>` : ''}
           <button onclick="deleteTask('${task.id}')" style="color:var(--danger)">Delete</button>
@@ -718,13 +764,24 @@ function setTheme(theme) {
     const dragAttrs = isDone ? '' : `draggable="true" ondragstart="onDragStart(event, '${task.id}', '${task.status}')" ondragend="onDragEnd(event)"`;
     const dragHandle = isDone ? '' : `<div class="drag-handle" title="Drag to move" ontouchstart="onTouchDragStart(event, '${task.id}', '${task.status}')" ontouchmove="onTouchDragMove(event)" ontouchend="onTouchDragEnd(event)">⠿</div>`;
 
+    // Notes preview (capture_notes)
+    const notesPreview = task.capture_notes && task.capture_notes !== task.name
+      ? `<div class="task-notes" onclick="openTaskEditor('${task.id}', event)" title="Click to edit notes">${escapeHTML(task.capture_notes.substring(0, 120))}${task.capture_notes.length > 120 ? '…' : ''}</div>`
+      : '';
+
+    // Delegated-to badge
+    const delegatedBadge = task.delegated_to
+      ? `<span class="tag delegated">→ ${escapeHTML(task.delegated_to)}</span>`
+      : '';
+
     return `
       <div class="task" data-id="${task.id}" ${dragAttrs} onclick="toggleTaskSelection(event, '${task.id}')">
         ${dragHandle}
         <div class="task-checkbox ${checked}" onclick="if(!selectMode){event.stopPropagation();toggleComplete('${task.id}', ${isDone})}"></div>
         <div class="task-content">
           <div class="task-name ${completedClass}" ${isDone ? '' : `onclick="openTaskEditor('${task.id}', event)"`} style="${isDone ? '' : 'cursor:pointer'}" title="${isDone ? '' : 'Click to edit'}">${escapeHTML(task.name)}</div>
-          ${tags.length ? `<div class="task-meta">${tags.join('')}</div>` : ''}
+          ${tags.length || delegatedBadge ? `<div class="task-meta">${delegatedBadge}${tags.join('')}</div>` : ''}
+          ${notesPreview}
         </div>
         ${moveOptions}
       </div>
@@ -1139,6 +1196,10 @@ function setTheme(theme) {
         <label>Tags (comma-separated)</label>
         <input type="text" id="edit-tags-${id}" value="${(task.tags || []).join(', ')}">
       </div>
+      <div class="edit-field">
+        <label>Notes</label>
+        <textarea id="edit-notes-${id}" rows="3" style="width:100%;padding:0.4rem 0.5rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:0.8125rem;resize:vertical;">${escapeHTML(task.capture_notes || '')}</textarea>
+      </div>
       <div class="edit-actions">
         <button class="cancel-edit-btn" onclick="closeTaskEditor()">Cancel</button>
         <button class="save-btn" onclick="saveTaskEdit('${id}')">Save</button>
@@ -1176,8 +1237,9 @@ function setTheme(theme) {
     const defer_date = document.getElementById(`edit-defer-${id}`).value || null;
     const tagsRaw = document.getElementById(`edit-tags-${id}`).value;
     const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : null;
+    const capture_notes = document.getElementById(`edit-notes-${id}`).value.trim() || null;
 
-    const update = { name, project, domain, due_date, defer_date, tags };
+    const update = { name, project, domain, due_date, defer_date, tags, capture_notes };
 
     // If defer_date was set and task isn't already deferred, move it
     const task = allTasks.find(t => t.id === id);
