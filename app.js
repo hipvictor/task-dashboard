@@ -8,7 +8,7 @@ try {
   document.getElementById('login-error').textContent = 'Supabase library failed to load: ' + e.message;
 }
 
-console.log('Dashboard v17 loaded — delegate pool + notes');
+console.log('Dashboard v18 loaded — quick-tags + save fix');
 
 let allTasks = [];
 let openMenu = null;
@@ -1141,6 +1141,66 @@ function setTheme(theme) {
   // — Inline task editing —
   let editingTaskId = null;
 
+  // Quick-tag system — builds clickable tag buttons from common tags + staff names
+  const STAFF_TAGS = ['Cathy', 'Judy', 'Aaron', 'Jenny', 'Rebecca', 'Terri', 'Dylan'];
+  const AREA_TAGS = ['worship', 'finance', 'pastoral', 'operations', 'staff', 'lb', 'gff', 'congregation', 'tech', 'sermon'];
+
+  function getCommonTags() {
+    // Gather all tags used across tasks, count frequency
+    const freq = {};
+    allTasks.forEach(t => {
+      if (t.tags && t.tags.length) {
+        t.tags.forEach(tag => {
+          const key = tag.trim();
+          if (key) freq[key] = (freq[key] || 0) + 1;
+        });
+      }
+    });
+    // Merge staff + area defaults (ensure they're always shown), then add any frequent ones
+    const defaults = new Set([...STAFF_TAGS, ...AREA_TAGS]);
+    // Add any tag used 3+ times that isn't already in defaults
+    Object.entries(freq).forEach(([tag, count]) => {
+      if (count >= 3) defaults.add(tag);
+    });
+    // Sort: staff first, then areas, then others alphabetically
+    const staffSet = new Set(STAFF_TAGS.map(s => s.toLowerCase()));
+    const areaSet = new Set(AREA_TAGS);
+    const result = [];
+    STAFF_TAGS.forEach(s => { if (defaults.has(s)) result.push(s); });
+    AREA_TAGS.forEach(a => { if (defaults.has(a)) result.push(a); });
+    defaults.forEach(tag => {
+      if (!result.includes(tag) && !staffSet.has(tag.toLowerCase()) && !areaSet.has(tag)) {
+        result.push(tag);
+      }
+    });
+    return result;
+  }
+
+  function buildQuickTags(currentTags) {
+    const currentLower = (currentTags || []).map(t => t.toLowerCase());
+    return getCommonTags().map(tag => {
+      const active = currentLower.includes(tag.toLowerCase()) ? ' active' : '';
+      return `<button type="button" class="quick-tag-btn${active}" onclick="toggleQuickTag(this, '${escapeHTML(tag)}')">${escapeHTML(tag)}</button>`;
+    }).join('');
+  }
+
+  function toggleQuickTag(btn, tag) {
+    // Find the tags input in the same editor form
+    const form = btn.closest('.task-edit-form');
+    const input = form.querySelector('input[id^="edit-tags-"]');
+    let tags = input.value ? input.value.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    const idx = tags.findIndex(t => t.toLowerCase() === tag.toLowerCase());
+    if (idx >= 0) {
+      tags.splice(idx, 1);
+      btn.classList.remove('active');
+    } else {
+      tags.push(tag);
+      btn.classList.add('active');
+    }
+    input.value = tags.join(', ');
+  }
+
   function openTaskEditor(id, event) {
     if (selectMode) return;
     event.stopPropagation();
@@ -1193,8 +1253,9 @@ function setTheme(theme) {
         </div>
       </div>
       <div class="edit-field">
-        <label>Tags (comma-separated)</label>
-        <input type="text" id="edit-tags-${id}" value="${(task.tags || []).join(', ')}">
+        <label>Tags</label>
+        <div class="quick-tags" id="quick-tags-${id}">${buildQuickTags(task.tags || [])}</div>
+        <input type="text" id="edit-tags-${id}" value="${(task.tags || []).join(', ')}" placeholder="Or type custom tags, comma-separated">
       </div>
       <div class="edit-field">
         <label>Notes</label>
@@ -1228,40 +1289,45 @@ function setTheme(theme) {
   async function saveTaskEdit(id) {
     if (savingTask) return;
     savingTask = true;
-    const name = document.getElementById(`edit-name-${id}`).value.trim();
-    if (!name) { savingTask = false; return; }
+    try {
+      const name = document.getElementById(`edit-name-${id}`).value.trim();
+      if (!name) return;
 
-    const project = document.getElementById(`edit-project-${id}`).value || null;
-    const domain = document.getElementById(`edit-domain-${id}`).value;
-    const due_date = document.getElementById(`edit-due-${id}`).value || null;
-    const defer_date = document.getElementById(`edit-defer-${id}`).value || null;
-    const tagsRaw = document.getElementById(`edit-tags-${id}`).value;
-    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : null;
-    const capture_notes = document.getElementById(`edit-notes-${id}`).value.trim() || null;
+      const project = document.getElementById(`edit-project-${id}`).value || null;
+      const domain = document.getElementById(`edit-domain-${id}`).value;
+      const due_date = document.getElementById(`edit-due-${id}`).value || null;
+      const defer_date = document.getElementById(`edit-defer-${id}`).value || null;
+      const tagsRaw = document.getElementById(`edit-tags-${id}`).value;
+      const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : null;
+      const capture_notes = document.getElementById(`edit-notes-${id}`).value.trim() || null;
 
-    const update = { name, project, domain, due_date, defer_date, tags, capture_notes };
+      const update = { name, project, domain, due_date, defer_date, tags, capture_notes };
 
-    // If defer_date was set and task isn't already deferred, move it
-    const task = allTasks.find(t => t.id === id);
-    if (defer_date && task && task.status !== 'deferred') {
-      update.status = 'deferred';
-    }
-    // If defer_date was cleared and task is deferred, move to inbox
-    if (!defer_date && task && task.status === 'deferred') {
-      update.status = 'inbox';
-    }
+      // If defer_date was set and task isn't already deferred, move it
+      const task = allTasks.find(t => t.id === id);
+      if (defer_date && task && task.status !== 'deferred') {
+        update.status = 'deferred';
+      }
+      // If defer_date was cleared and task is deferred, move to inbox
+      if (!defer_date && task && task.status === 'deferred') {
+        update.status = 'inbox';
+      }
 
-    const { error } = await sb
-      .from('tasks')
-      .update(update)
-      .eq('id', id);
+      const { error } = await sb
+        .from('tasks')
+        .update(update)
+        .eq('id', id);
 
-    savingTask = false;
-    editingTaskId = null;
-    if (error) {
-      showToast('Save failed: ' + error.message, 'error');
-    } else {
-      await loadTasks();
+      editingTaskId = null;
+      if (error) {
+        showToast('Save failed: ' + error.message, 'error');
+      } else {
+        await loadTasks();
+      }
+    } catch (err) {
+      showToast('Save failed: ' + err.message, 'error');
+    } finally {
+      savingTask = false;
     }
   }
 
