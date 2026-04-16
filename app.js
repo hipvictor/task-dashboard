@@ -1229,7 +1229,7 @@ function setTheme(theme) {
     if (savingTask) return;
     savingTask = true;
     const name = document.getElementById(`edit-name-${id}`).value.trim();
-    if (!name) return;
+    if (!name) { savingTask = false; return; }
 
     const project = document.getElementById(`edit-project-${id}`).value || null;
     const domain = document.getElementById(`edit-domain-${id}`).value;
@@ -1256,8 +1256,13 @@ function setTheme(theme) {
       .update(update)
       .eq('id', id);
 
+    savingTask = false;
     editingTaskId = null;
-    if (!error) await loadTasks();
+    if (error) {
+      showToast('Save failed: ' + error.message, 'error');
+    } else {
+      await loadTasks();
+    }
   }
 
   async function handleQuickAdd() {
