@@ -50,11 +50,6 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    html, body {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: hidden;
-    }
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -349,9 +344,8 @@
     /* Tasks view uses 2-column grid */
     .view.active.main {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-columns: 1fr 320px;
       gap: 0;
-      width: 100%;
       max-width: 1200px;
       margin: 0 auto;
       min-height: calc(100vh - 57px);
@@ -381,7 +375,6 @@
       position: relative;
       display: flex;
       flex-direction: column;
-      min-width: 0;
     }
 
     .left-col-content {
@@ -398,7 +391,6 @@
     .right-col {
       padding: 1.25rem;
       overflow-y: auto;
-      min-width: 0;
     }
 
     /* ── People View ── */
@@ -1571,8 +1563,7 @@
 
         @media (max-width: 768px) {
       .view.active.main {
-        grid-template-columns: minmax(0, 1fr);
-        width: 100%;
+        grid-template-columns: 1fr;
       }
 
       .left-col {
@@ -1609,19 +1600,23 @@
       }
 
       .tab-nav {
-        padding: 0 0.25rem;
-        flex-wrap: nowrap;
+        padding: 0 0.5rem;
+        flex-wrap: wrap;
         row-gap: 0;
       }
 
-      /* Search moved into the header; the 5 tabs now share one clean row as
-         equal cells (flex 1 1 0) — none strands, none needs horizontal scroll. */
+      /* Let the 5 tabs (+ search) share the row and wrap cleanly instead of
+         hiding behind a horizontal scroll. Each tab flexes to fill the width
+         so all are reachable without scrolling at the ~600px breakpoint. */
       .tab-btn {
-        flex: 1 1 0;
-        min-width: 0;
+        flex: 1 1 auto;
         text-align: center;
-        padding: 0.625rem 0.25rem;
-        font-size: 0.78rem;
+        padding: 0.625rem 0.5rem;
+        font-size: 0.8125rem;
+      }
+
+      .tab-btn.search-toggle {
+        flex: 0 0 auto;
       }
 
       .btn-logout {
