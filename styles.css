@@ -50,6 +50,11 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -344,8 +349,9 @@
     /* Tasks view uses 2-column grid */
     .view.active.main {
       display: grid;
-      grid-template-columns: 1fr 320px;
+      grid-template-columns: minmax(0, 1fr) 320px;
       gap: 0;
+      width: 100%;
       max-width: 1200px;
       margin: 0 auto;
       min-height: calc(100vh - 57px);
@@ -375,6 +381,7 @@
       position: relative;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
 
     .left-col-content {
@@ -391,6 +398,7 @@
     .right-col {
       padding: 1.25rem;
       overflow-y: auto;
+      min-width: 0;
     }
 
     /* ── People View ── */
@@ -1563,7 +1571,8 @@
 
         @media (max-width: 768px) {
       .view.active.main {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
       }
 
       .left-col {
