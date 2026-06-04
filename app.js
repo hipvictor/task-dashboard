@@ -704,11 +704,12 @@ function setTheme(theme) {
     reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
     renderReview();
 
-    showToast(`${ids.length} task${ids.length > 1 ? 's' : ''} → Inbox`, {
+    showToast(`${ids.length} moved to Inbox`, {
       undo: async () => {
         reviewTasks = previous;
         renderReview();
         await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
+        await loadTasks();
       }
     });
 
@@ -718,6 +719,10 @@ function setTheme(theme) {
         reviewTasks = previous;
         renderReview();
         showToast(`Error: ${error.message}`, { type: 'error' });
+      } else {
+        // Refresh the Tasks tab so the promoted rows show up in Inbox
+        // (sorted newest-first, so they land at the top).
+        await loadTasks();
       }
     } catch (e) {
       reviewTasks = previous;
@@ -738,11 +743,12 @@ function setTheme(theme) {
     reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
     renderReview();
 
-    showToast(`${ids.length} dismissed → Someday`, {
+    showToast(`${ids.length} dismissed`, {
       undo: async () => {
         reviewTasks = previous;
         renderReview();
         await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
+        await loadTasks();
       }
     });
 
@@ -752,6 +758,9 @@ function setTheme(theme) {
         reviewTasks = previous;
         renderReview();
         showToast(`Error: ${error.message}`, { type: 'error' });
+      } else {
+        // Keep the Tasks tab in sync (dismissed items land in Someday).
+        await loadTasks();
       }
     } catch (e) {
       reviewTasks = previous;
@@ -884,7 +893,6 @@ function setTheme(theme) {
     allTasks = data || [];
     populateProjectFilter();
     renderTasks();
-    renderAlerts();
   }
 
   function populateProjectFilter() {
@@ -932,11 +940,19 @@ function setTheme(theme) {
   let delegateTagFilter = null;
 
   function renderTasks() {
-    const bench = getFilteredTasks('bench');
-    const inbox = getFilteredTasks('inbox');
-    const shelf = getFilteredTasks('shelf');
-    const someday = getFilteredTasks('someday');
-    let delegate = getFilteredTasks('delegate');
+    const bench = sortByUrgency(getFilteredTasks('bench'));
+    // Inbox: newest-first base order so freshly-promoted Review items land
+    // at the top, then urgency floats overdue/due-soon above the rest.
+    const inbox = sortByUrgency(
+      getFilteredTasks('inbox').sort((a, b) => {
+        const aT = new Date(a.updated_at || a.created_at || 0);
+        const bT = new Date(b.updated_at || b.created_at || 0);
+        return bT - aT;
+      })
+    );
+    const shelf = sortByUrgency(getFilteredTasks('shelf'));
+    const someday = sortByUrgency(getFilteredTasks('someday'));
+    let delegate = sortByUrgency(getFilteredTasks('delegate'));
     const deferred = getFilteredTasks('deferred')
       .sort((a, b) => {
         if (!a.defer_date) return 1;
@@ -1052,8 +1068,11 @@ function setTheme(theme) {
       ? `<span class="tag delegated">→ ${escapeHTML(task.delegated_to)}</span>`
       : '';
 
+    const urgency = isDone ? 0 : taskUrgency(task);
+    const urgencyClass = urgency === 2 ? ' urgency-overdue' : urgency === 1 ? ' urgency-due-soon' : '';
+
     return `
-      <div class="task" data-id="${task.id}" ${dragAttrs} onclick="toggleTaskSelection(event, '${task.id}')">
+      <div class="task${urgencyClass}" data-id="${task.id}" ${dragAttrs} onclick="toggleTaskSelection(event, '${task.id}')">
         ${dragHandle}
         <div class="task-checkbox ${checked}" onclick="if(!selectMode){event.stopPropagation();toggleComplete('${task.id}', ${isDone})}"></div>
         <div class="task-content">
@@ -1066,70 +1085,13 @@ function setTheme(theme) {
     `;
   }
 
-  function getDismissedAlerts() {
-    try {
-      const stored = localStorage.getItem('dismissed-alerts');
-      if (!stored) return {};
-      const parsed = JSON.parse(stored);
-      const today = new Date().toISOString().split('T')[0];
-      // Only keep dismissals from today — everything else reappears
-      const filtered = {};
-      for (const [key, date] of Object.entries(parsed)) {
-        if (date === today) filtered[key] = date;
-      }
-      return filtered;
-    } catch { return {}; }
-  }
-
-  function dismissAlert(key, el) {
-    el.classList.add('dismissing');
-    const dismissed = getDismissedAlerts();
-    dismissed[key] = new Date().toISOString().split('T')[0];
-    localStorage.setItem('dismissed-alerts', JSON.stringify(dismissed));
-    setTimeout(() => el.remove(), 300);
-  }
-
+  // Alert banner cards were removed in favor of a lighter, in-pool signal:
+  // tasks are sorted overdue → due-soon → rest (see sortByUrgency) and get a
+  // subtle row tint (see .task.urgency-* in styles.css). This stub stays so
+  // any stray caller is a no-op and clears the (now empty) alerts bar.
   function renderAlerts() {
     const bar = document.getElementById('alerts-bar');
-    const alerts = [];
-    const dismissed = getDismissedAlerts();
-
-    allTasks.forEach(t => {
-      if (t.status === 'done') return;
-      if (t.due_date) {
-        const days = daysUntil(t.due_date);
-        if (days < 0) {
-          alerts.push({ type: 'overdue', key: `overdue-${t.id}`, text: `Overdue: ${t.name} (${Math.abs(days)} days ago)` });
-        } else if (days <= 3) {
-          alerts.push({ type: 'due-soon', key: `due-${t.id}`, text: `Due ${days === 0 ? 'today' : `in ${days} day${days > 1 ? 's' : ''}`}: ${t.name}` });
-        }
-      }
-      if (t.status === 'shelf' && t.defer_date) {
-        const deferDays = daysUntil(t.defer_date);
-        if (deferDays >= -1 && deferDays <= 7) {
-          alerts.push({ type: 'surfaced', key: `deferred-${t.id}`, text: deferDays > 0
-            ? `${t.name} begins in ${deferDays} day${deferDays > 1 ? 's' : ''}`
-            : `${t.name} starts today. Move to bench?` });
-        }
-      }
-      // Approaching: deferred tasks with lead_time_days > 0 where defer_date - lead_time_days <= today
-      if (t.status === 'deferred' && t.defer_date && t.lead_time_days > 0) {
-        const deferDays = daysUntil(t.defer_date);
-        if (deferDays > 0 && deferDays <= t.lead_time_days) {
-          alerts.push({ type: 'approaching', key: `approaching-${t.id}`, text: `${t.name} starts in ${deferDays} day${deferDays !== 1 ? 's' : ''}` });
-        }
-      }
-    });
-
-    const visible = alerts.filter(a => !dismissed[a.key]);
-
-    const alertEmoji = { overdue: '🔴', 'due-soon': '🟡', surfaced: '🔵', approaching: '🟦' };
-    bar.innerHTML = visible.map(a =>
-      `<div class="alert alert-${a.type}">
-        <span>${alertEmoji[a.type] || '🔵'} ${escapeHTML(a.text)}</span>
-        <button class="alert-dismiss" onclick="dismissAlert('${a.key}', this.closest('.alert'))" title="Dismiss for today">✕</button>
-      </div>`
-    ).join('');
+    if (bar) bar.innerHTML = '';
   }
 
   async function toggleComplete(id, wasDone) {
@@ -1846,6 +1808,28 @@ function setTheme(theme) {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     return Math.floor((target - now) / (1000 * 60 * 60 * 24));
+  }
+
+  // Urgency by due_date: 2 = overdue, 1 = due soon (<=3d), 0 = none.
+  // Drives both pool sort order and the subtle row tint.
+  function taskUrgency(task) {
+    if (!task.due_date) return 0;
+    const days = daysUntil(task.due_date);
+    if (days < 0) return 2;
+    if (days <= 3) return 1;
+    return 0;
+  }
+
+  // Stable sort that floats overdue tasks to the top, then due-soon,
+  // preserving the incoming order within each urgency band.
+  function sortByUrgency(tasks) {
+    return tasks
+      .map((t, i) => [t, i])
+      .sort((a, b) => {
+        const u = taskUrgency(b[0]) - taskUrgency(a[0]);
+        return u !== 0 ? u : a[1] - b[1];
+      })
+      .map(pair => pair[0]);
   }
 
   function formatDate(dateStr) {

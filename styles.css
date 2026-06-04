@@ -305,6 +305,7 @@
     /* ── Tab Navigation ── */
     .tab-nav {
       display: flex;
+      flex-wrap: wrap;
       gap: 0;
       border-bottom: 1px solid var(--border);
       padding: 0 1.5rem;
@@ -624,65 +625,30 @@
       color: var(--text-muted);
     }
 
-    .alerts-bar {
-      margin-bottom: 1.25rem;
+    /* Lightweight urgency signal: a quiet left-border accent + faint tint
+       in place of the old red/yellow banner cards. --danger and --warning
+       are identical across ember/stone/forest, so low-opacity rgba reads
+       well on every theme's surface. */
+    .task.urgency-overdue {
+      border-left: 3px solid var(--danger);
+      background: rgba(217, 83, 79, 0.07); /* fallback */
+      background: color-mix(in srgb, var(--danger) 7%, var(--surface));
     }
 
-    .alert {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.625rem 0.875rem;
-      border-radius: 12px;
-      font-size: 0.8125rem;
-      margin-bottom: 0.5rem;
-      transition: all 0.3s ease;
+    .task.urgency-overdue:hover {
+      background: rgba(217, 83, 79, 0.12); /* fallback */
+      background: color-mix(in srgb, var(--danger) 11%, var(--surface-hover));
     }
 
-    .alert-dismiss {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 0.875rem;
-      padding: 0 0.25rem;
-      opacity: 0.5;
-      transition: opacity 0.2s ease;
-      flex-shrink: 0;
+    .task.urgency-due-soon {
+      border-left: 3px solid var(--warning);
+      background: rgba(232, 168, 56, 0.06); /* fallback */
+      background: color-mix(in srgb, var(--warning) 6%, var(--surface));
     }
 
-    .alert-dismiss:hover {
-      opacity: 1;
-    }
-
-    .alert.dismissing {
-      opacity: 0;
-      transform: translateX(20px);
-      max-height: 0;
-      padding: 0 0.875rem;
-      margin-bottom: 0;
-      overflow: hidden;
-    }
-
-    .alert-overdue {
-      background: rgba(217, 83, 79, 0.15);
-      border: 1px solid rgba(217, 83, 79, 0.3);
-    }
-
-    .alert-due-soon {
-      background: rgba(232, 168, 56, 0.15);
-      border: 1px solid rgba(232, 168, 56, 0.3);
-    }
-
-    .alert-surfaced {
-      background: rgba(196, 149, 106, 0.15);
-      border: 1px solid rgba(196, 149, 106, 0.3);
-    }
-
-    .alert-approaching {
-      background: rgba(100, 160, 220, 0.15);
-      border: 1px solid rgba(100, 160, 220, 0.3);
+    .task.urgency-due-soon:hover {
+      background: rgba(232, 168, 56, 0.10); /* fallback */
+      background: color-mix(in srgb, var(--warning) 10%, var(--surface-hover));
     }
 
     .section {
@@ -1634,19 +1600,23 @@
       }
 
       .tab-nav {
-        padding: 0 0.75rem;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        padding: 0 0.5rem;
+        flex-wrap: wrap;
+        row-gap: 0;
       }
 
-      .tab-nav::-webkit-scrollbar {
-        display: none;
-      }
-
+      /* Let the 5 tabs (+ search) share the row and wrap cleanly instead of
+         hiding behind a horizontal scroll. Each tab flexes to fill the width
+         so all are reachable without scrolling at the ~600px breakpoint. */
       .tab-btn {
-        padding: 0.625rem 0.875rem;
+        flex: 1 1 auto;
+        text-align: center;
+        padding: 0.625rem 0.5rem;
         font-size: 0.8125rem;
+      }
+
+      .tab-btn.search-toggle {
+        flex: 0 0 auto;
       }
 
       .btn-logout {
