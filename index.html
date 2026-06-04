@@ -50,6 +50,7 @@
           </div>
         </div>
       </div>
+      <button class="settings-btn search-toggle" onclick="toggleSearch()" title="Search tasks">🔍</button>
       <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
     </div>
   </div>
@@ -60,7 +61,6 @@
     <button class="tab-btn" onclick="switchView('threads')">Threads</button>
     <button class="tab-btn" onclick="switchView('briefing')">Briefing</button>
     <button class="tab-btn" onclick="switchView('review')">Review</button>
-    <button class="tab-btn search-toggle" onclick="toggleSearch()" title="Search tasks">🔍</button>
   </div>
   <div class="search-bar" id="search-bar"><input type="text" class="search-input" id="search-input" placeholder="Search tasks..." oninput="handleSearchInput(this.value)" onkeydown="if(event.key==='Escape')hideSearch()"></div>
   <div id="tasks-view" class="view active main">

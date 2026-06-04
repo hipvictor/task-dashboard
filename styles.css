@@ -1600,23 +1600,19 @@
       }
 
       .tab-nav {
-        padding: 0 0.5rem;
-        flex-wrap: wrap;
+        padding: 0 0.25rem;
+        flex-wrap: nowrap;
         row-gap: 0;
       }
 
-      /* Let the 5 tabs (+ search) share the row and wrap cleanly instead of
-         hiding behind a horizontal scroll. Each tab flexes to fill the width
-         so all are reachable without scrolling at the ~600px breakpoint. */
+      /* Search moved into the header; the 5 tabs now share one clean row as
+         equal cells (flex 1 1 0) — none strands, none needs horizontal scroll. */
       .tab-btn {
-        flex: 1 1 auto;
+        flex: 1 1 0;
+        min-width: 0;
         text-align: center;
-        padding: 0.625rem 0.5rem;
-        font-size: 0.8125rem;
-      }
-
-      .tab-btn.search-toggle {
-        flex: 0 0 auto;
+        padding: 0.625rem 0.25rem;
+        font-size: 0.78rem;
       }
 
       .btn-logout {
