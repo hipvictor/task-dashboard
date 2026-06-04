@@ -59,6 +59,7 @@
     <button class="tab-btn" onclick="switchView('people')">People</button>
     <button class="tab-btn" onclick="switchView('threads')">Threads</button>
     <button class="tab-btn" onclick="switchView('briefing')">Briefing</button>
+    <button class="tab-btn" onclick="switchView('review')">Review</button>
     <button class="tab-btn search-toggle" onclick="toggleSearch()" title="Search tasks">🔍</button>
   </div>
   <div class="search-bar" id="search-bar"><input type="text" class="search-input" id="search-input" placeholder="Search tasks..." oninput="handleSearchInput(this.value)" onkeydown="if(event.key==='Escape')hideSearch()"></div>
@@ -217,6 +218,38 @@
       <div class="briefing-loading">Loading briefing...</div>
     </div>
   </div>
+
+  <div id="review-view" class="view review-view">
+    <div class="review-header">
+      <h2 class="review-title">Review Proposed Tasks</h2>
+      <button class="refresh-btn" onclick="loadReview()" title="Refresh">🔄</button>
+    </div>
+    <div class="review-intro">Triage AI-proposed tasks. Check the ones you want, then add them to your Inbox. Clear the rest.</div>
+
+    <div class="review-section" id="review-yours-section">
+      <div class="review-section-header">
+        <span class="review-section-title">📋 Yours</span>
+        <span class="section-count" id="review-yours-count">0</span>
+      </div>
+      <div id="review-yours-list" class="review-list"></div>
+      <div class="review-action-bar" id="review-yours-actions" style="display:none">
+        <button class="review-add-btn" onclick="reviewAddChecked('yours')">✓ Add checked → Inbox</button>
+        <button class="review-clear-btn" onclick="reviewClearUnchecked('yours')">Clear unchecked</button>
+      </div>
+    </div>
+
+    <div class="review-section" id="review-others-section">
+      <div class="review-section-header">
+        <span class="review-section-title">👥 Looks like someone else's</span>
+        <span class="section-count" id="review-others-count">0</span>
+      </div>
+      <div id="review-others-list" class="review-list"></div>
+      <div class="review-action-bar" id="review-others-actions" style="display:none">
+        <button class="review-add-btn" onclick="reviewAddChecked('others')">✓ Add checked (mine) → Inbox</button>
+        <button class="review-clear-btn" onclick="reviewClearUnchecked('others')">Clear the rest</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="batch-bar" id="batch-bar">
@@ -259,6 +292,7 @@
   <div class="shortcut-row"><span>People tab</span><span class="kbd-hint">2</span></div>
   <div class="shortcut-row"><span>Threads tab</span><span class="kbd-hint">3</span></div>
   <div class="shortcut-row"><span>Briefing tab</span><span class="kbd-hint">4</span></div>
+  <div class="shortcut-row"><span>Review tab</span><span class="kbd-hint">5</span></div>
   <div class="shortcut-row"><span>Close / Cancel</span><span class="kbd-hint">Esc</span></div>
   <div class="shortcut-row"><span>Show this help</span><span class="kbd-hint">?</span></div>
 </div>

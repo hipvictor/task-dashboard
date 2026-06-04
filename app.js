@@ -129,14 +129,11 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === '/') {
     e.preventDefault();
     toggleSearch();
-  } else if (e.key >= '1' && e.key <= '4') {
+  } else if (e.key >= '1' && e.key <= '5') {
     e.preventDefault();
-    const tabNum = parseInt(e.key) - 1;
-    const tabBtns = document.querySelectorAll('[data-tab-id]');
-    if (tabNum < tabBtns.length) {
-      const tabId = tabBtns[tabNum].getAttribute('data-tab-id');
-      switchTab(tabId);
-    }
+    const views = ['tasks', 'people', 'threads', 'briefing', 'review'];
+    const view = views[parseInt(e.key) - 1];
+    if (view) switchView(view);
   }
 });
 
@@ -286,6 +283,11 @@ function setTheme(theme) {
     await loadTasks();
     await loadAgenda();
     renderCoachingCard();
+
+    // Deep-link: open the Review tab if URL hash requests it
+    if (location.hash === '#review') {
+      switchView('review');
+    }
   }
 
   // ── View Switching ──
@@ -295,6 +297,7 @@ function setTheme(theme) {
     document.getElementById('people-view').classList.remove('active');
     document.getElementById('threads-view').classList.remove('active');
     document.getElementById('briefing-view').classList.remove('active');
+    document.getElementById('review-view').classList.remove('active');
 
     // Remove active class from all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -315,6 +318,10 @@ function setTheme(theme) {
       document.getElementById('briefing-view').classList.add('active');
       document.querySelectorAll('.tab-btn')[3].classList.add('active');
       loadBriefing();
+    } else if (viewName === 'review') {
+      document.getElementById('review-view').classList.add('active');
+      document.querySelectorAll('.tab-btn')[4].classList.add('active');
+      loadReview();
     }
   }
 
@@ -583,6 +590,277 @@ function setTheme(theme) {
   }
 
   // renderBriefing removed — briefing HTML is pre-built and stored in briefings table
+
+  // ── Review View ──
+  // Triage tasks with status='proposed'. Convention: a task tagged
+  // 'for-someone-else' is surfaced under "Looks like someone else's";
+  // everything else proposed is "Yours". (Tag chosen because the schema
+  // already stores arbitrary tags[] and this needs no migration.)
+  const REVIEW_OTHERS_TAG = 'for-someone-else';
+  let reviewTasks = [];
+
+  function isOthersTask(task) {
+    return (task.tags || []).some(t => t.toLowerCase() === REVIEW_OTHERS_TAG);
+  }
+
+  async function loadReview() {
+    const yoursList = document.getElementById('review-yours-list');
+    const othersList = document.getElementById('review-others-list');
+    yoursList.innerHTML = '<div class="review-empty">Loading…</div>';
+    othersList.innerHTML = '';
+
+    try {
+      const { data, error } = await sb
+        .from('tasks')
+        .select('*')
+        .eq('status', 'proposed')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      reviewTasks = data || [];
+      renderReview();
+    } catch (e) {
+      console.error('Error loading review:', e);
+      yoursList.innerHTML = '<div class="review-empty">Error loading proposed tasks</div>';
+    }
+  }
+
+  function renderReview() {
+    const yours = reviewTasks.filter(t => !isOthersTask(t));
+    const others = reviewTasks.filter(t => isOthersTask(t));
+
+    renderReviewSection('yours', yours);
+    renderReviewSection('others', others);
+  }
+
+  function renderReviewSection(key, tasks) {
+    const list = document.getElementById(`review-${key}-list`);
+    const count = document.getElementById(`review-${key}-count`);
+    const actions = document.getElementById(`review-${key}-actions`);
+
+    count.textContent = tasks.length;
+
+    if (tasks.length === 0) {
+      list.innerHTML = key === 'yours'
+        ? '<div class="review-empty">Nothing proposed for you right now.</div>'
+        : '<div class="review-empty">No tasks look like someone else\'s.</div>';
+      actions.style.display = 'none';
+      return;
+    }
+
+    list.innerHTML = tasks.map(t => reviewTaskHTML(t)).join('');
+    actions.style.display = 'flex';
+  }
+
+  function reviewTaskHTML(task) {
+    const tags = [];
+    if (task.project) tags.push(`<span class="tag project">${escapeHTML(task.project)}</span>`);
+    if (task.domain === 'home') tags.push('<span class="tag home">home</span>');
+    (task.tags || []).forEach(t => {
+      if (t.toLowerCase() === REVIEW_OTHERS_TAG) return; // implied by section
+      tags.push(`<span class="tag">${escapeHTML(t)}</span>`);
+    });
+
+    const source = task.source_note
+      ? `<div class="review-source" title="${escapeHTML(task.source_note)}">from: ${escapeHTML(task.source_note)}</div>`
+      : '';
+
+    return `
+      <div class="review-item" data-id="${task.id}">
+        <div class="review-check" onclick="toggleReviewCheck(event, '${task.id}')"></div>
+        <div class="review-item-body">
+          <div class="review-item-name" onclick="openReviewEditor('${task.id}', event)" title="Click to edit">${escapeHTML(task.name)}</div>
+          ${tags.length ? `<div class="review-item-meta">${tags.join('')}</div>` : ''}
+          ${source}
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleReviewCheck(event, id) {
+    event.stopPropagation();
+    const item = event.currentTarget.closest('.review-item');
+    if (item) item.classList.toggle('checked');
+  }
+
+  function getReviewCheckedIds(key) {
+    const list = document.getElementById(`review-${key}-list`);
+    return [...list.querySelectorAll('.review-item.checked')].map(el => el.dataset.id);
+  }
+
+  function getReviewUncheckedIds(key) {
+    const list = document.getElementById(`review-${key}-list`);
+    return [...list.querySelectorAll('.review-item:not(.checked)')].map(el => el.dataset.id);
+  }
+
+  async function reviewAddChecked(key) {
+    const ids = getReviewCheckedIds(key);
+    if (ids.length === 0) {
+      showToast('Nothing checked', { type: 'error' });
+      return;
+    }
+
+    // Optimistic: drop these from the local list and re-render
+    const previous = JSON.parse(JSON.stringify(reviewTasks));
+    reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
+    renderReview();
+
+    showToast(`${ids.length} task${ids.length > 1 ? 's' : ''} → Inbox`, {
+      undo: async () => {
+        reviewTasks = previous;
+        renderReview();
+        await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
+      }
+    });
+
+    try {
+      const { error } = await sb.from('tasks').update({ status: 'inbox' }).in('id', ids);
+      if (error) {
+        reviewTasks = previous;
+        renderReview();
+        showToast(`Error: ${error.message}`, { type: 'error' });
+      }
+    } catch (e) {
+      reviewTasks = previous;
+      renderReview();
+      showToast(`Error: ${e.message}`, { type: 'error' });
+    }
+  }
+
+  async function reviewClearUnchecked(key) {
+    const ids = getReviewUncheckedIds(key);
+    if (ids.length === 0) {
+      showToast('Nothing to clear', { type: 'error' });
+      return;
+    }
+
+    // Dismiss to 'someday' (recoverable, non-destructive).
+    const previous = JSON.parse(JSON.stringify(reviewTasks));
+    reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
+    renderReview();
+
+    showToast(`${ids.length} dismissed → Someday`, {
+      undo: async () => {
+        reviewTasks = previous;
+        renderReview();
+        await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
+      }
+    });
+
+    try {
+      const { error } = await sb.from('tasks').update({ status: 'someday' }).in('id', ids);
+      if (error) {
+        reviewTasks = previous;
+        renderReview();
+        showToast(`Error: ${error.message}`, { type: 'error' });
+      }
+    } catch (e) {
+      reviewTasks = previous;
+      renderReview();
+      showToast(`Error: ${e.message}`, { type: 'error' });
+    }
+  }
+
+  // Inline editor for review items — reuses the same edit UI shape as tasks.
+  let editingReviewId = null;
+
+  function openReviewEditor(id, event) {
+    event.stopPropagation();
+    const task = reviewTasks.find(t => t.id === id);
+    if (!task) return;
+
+    if (editingReviewId) closeReviewEditor();
+    editingReviewId = id;
+
+    const itemEl = document.querySelector(`.review-item[data-id="${id}"]`);
+    if (!itemEl) return;
+
+    const projects = [...new Set(reviewTasks.filter(t => t.project).map(t => t.project))].sort();
+    const projectOptions = projects.map(p => `<option value="${escapeHTML(p)}" ${task.project === p ? 'selected' : ''}>${escapeHTML(p)}</option>`).join('');
+
+    const form = document.createElement('div');
+    form.className = 'task-edit-form';
+    form.id = `review-edit-form-${id}`;
+    form.onclick = (e) => e.stopPropagation();
+    form.innerHTML = `
+      <div class="edit-field">
+        <label>Task</label>
+        <input type="text" id="review-edit-name-${id}" value="${escapeHTML(task.name)}">
+      </div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Project</label>
+          <select id="review-edit-project-${id}">
+            <option value="">None</option>
+            ${projectOptions}
+          </select>
+        </div>
+        <div class="edit-field">
+          <label>Domain</label>
+          <select id="review-edit-domain-${id}">
+            <option value="work" ${task.domain === 'work' ? 'selected' : ''}>Work</option>
+            <option value="home" ${task.domain === 'home' ? 'selected' : ''}>Home</option>
+          </select>
+        </div>
+      </div>
+      <div class="edit-field">
+        <label>Tags</label>
+        <input type="text" id="review-edit-tags-${id}" value="${escapeHTML((task.tags || []).join(', '))}" placeholder="Comma-separated tags">
+      </div>
+      <div class="edit-actions">
+        <button class="cancel-edit-btn" onclick="closeReviewEditor()">Cancel</button>
+        <button class="save-btn" onclick="saveReviewEdit('${id}')">Save</button>
+      </div>
+    `;
+
+    itemEl.style.display = 'none';
+    itemEl.parentNode.insertBefore(form, itemEl.nextSibling);
+
+    const nameInput = document.getElementById(`review-edit-name-${id}`);
+    nameInput.focus();
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveReviewEdit(id);
+      if (e.key === 'Escape') closeReviewEditor();
+    });
+  }
+
+  function closeReviewEditor() {
+    if (!editingReviewId) return;
+    const form = document.getElementById(`review-edit-form-${editingReviewId}`);
+    const itemEl = document.querySelector(`.review-item[data-id="${editingReviewId}"]`);
+    if (form) form.remove();
+    if (itemEl) itemEl.style.display = '';
+    editingReviewId = null;
+  }
+
+  async function saveReviewEdit(id) {
+    if (savingTask) return;
+    savingTask = true;
+    try {
+      const name = document.getElementById(`review-edit-name-${id}`).value.trim();
+      if (!name) return;
+      const project = document.getElementById(`review-edit-project-${id}`).value || null;
+      const domain = document.getElementById(`review-edit-domain-${id}`).value;
+      const tagsRaw = document.getElementById(`review-edit-tags-${id}`).value;
+      const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : null;
+
+      const update = { name, project, domain, tags };
+      const { error } = await sb.from('tasks').update(update).eq('id', id);
+
+      editingReviewId = null;
+      if (error) {
+        showToast('Save failed: ' + error.message, { type: 'error' });
+      } else {
+        // Update local copy and re-render (tag change may move it between sections)
+        const idx = reviewTasks.findIndex(t => t.id === id);
+        if (idx !== -1) reviewTasks[idx] = { ...reviewTasks[idx], ...update };
+        renderReview();
+      }
+    } catch (err) {
+      showToast('Save failed: ' + err.message, { type: 'error' });
+    } finally {
+      savingTask = false;
+    }
+  }
 
   async function surfaceDeferredTasks() {
     try {

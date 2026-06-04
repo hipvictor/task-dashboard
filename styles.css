@@ -2318,3 +2318,189 @@
       background: rgba(232, 168, 56, 0.3);
       border-radius: 2px;
     }
+
+    /* ── Review View ── */
+    .view.active.review-view {
+      display: block;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 1.25rem 1.5rem;
+      min-height: calc(100vh - 57px);
+    }
+
+    .review-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .review-title {
+      font-size: calc(1.25rem * var(--size-scale));
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .review-intro {
+      font-size: calc(0.8125rem * var(--size-scale));
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+    }
+
+    .review-section {
+      margin-bottom: 2rem;
+    }
+
+    .review-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .review-section-title {
+      font-size: calc(0.8125rem * var(--size-scale));
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .review-list {
+      margin-bottom: 0.75rem;
+    }
+
+    .review-empty {
+      font-size: calc(0.8125rem * var(--size-scale));
+      color: var(--text-muted);
+      padding: 0.75rem 0.25rem;
+      font-style: italic;
+    }
+
+    .review-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.625rem;
+      padding: 0.625rem 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 0.375rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px var(--shadow);
+    }
+
+    .review-item:hover {
+      background: var(--surface-hover);
+    }
+
+    .review-check {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      border: 2px solid var(--border);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .review-check:hover {
+      border-color: var(--accent);
+    }
+
+    .review-item.checked .review-check {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .review-item.checked .review-check::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 1px;
+      width: 4px;
+      height: 9px;
+      border: solid var(--bg);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .review-item.checked {
+      border-color: var(--accent);
+    }
+
+    .review-item-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .review-item-name {
+      font-size: calc(0.875rem * var(--size-scale));
+      color: var(--text);
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .review-item-name:hover {
+      color: var(--accent);
+    }
+
+    .review-item-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-top: 0.375rem;
+    }
+
+    .review-source {
+      font-size: calc(0.6875rem * var(--size-scale));
+      color: var(--text-muted);
+      margin-top: 0.375rem;
+      opacity: 0.7;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .review-action-bar {
+      display: flex;
+      gap: 0.625rem;
+      margin-top: 0.5rem;
+    }
+
+    .review-action-bar button {
+      font-family: var(--font);
+      font-size: calc(0.8125rem * var(--size-scale));
+      font-weight: 500;
+      padding: 0.5rem 0.875rem;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: all 0.15s ease;
+    }
+
+    .review-add-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: var(--bg);
+      border-color: transparent;
+    }
+
+    .review-add-btn:hover {
+      opacity: 0.9;
+    }
+
+    .review-clear-btn {
+      background: var(--surface);
+      color: var(--text-muted);
+    }
+
+    .review-clear-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
