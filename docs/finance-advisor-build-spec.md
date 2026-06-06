@@ -166,9 +166,13 @@ insert into memory_blocks (label, content) values
 - Parsers: CSV (balance sheet / transactions → structured summary), PDF (text extract),
   Docs/Sheets (export text).
 
-**YouTube playlist** — _TODO: Jonathan to provide the playlist link + whether it's
-public / unlisted / private._
-- List playlist items via YouTube Data API (key for public/unlisted; OAuth if private).
+**YouTube playlist** — `PLag8ZX1E6YzzbCeHRcREIUhev-WuXHrHf`
+(https://youtube.com/playlist?list=PLag8ZX1E6YzzbCeHRcREIUhev-WuXHrHf).
+- Visibility: _to confirm at build_ (YouTube returns 403 to anonymous server fetches, so it
+  couldn't be checked from the authoring environment). Moot in practice — Jonathan's transcript
+  skill runs under his own login, so unlisted/private is fine.
+- List playlist items via YouTube Data API (key for public/unlisted; OAuth if private), or via
+  the transcript skill if it already handles playlist enumeration.
 - Transcript via **Jonathan's existing transcript skill** (locate in Cowork). Fallback:
   `youtube-transcript-api` / `yt-dlp --write-auto-sub`. Some videos won't have transcripts —
   log and skip.
@@ -248,20 +252,21 @@ On invocation:
 ## 11. Privacy & data governance
 
 - This is **household** financial data. Keep it in Jonathan's own Supabase (RLS on) + his Drive.
-- The "Personal FInance" folder currently sits under the **church Workspace** tenant
-  (`jonathan@arapahoumc.org`). Consider moving the household-finance lane to a **personal Google
-  account** to avoid mixing personal financial records with the church tenant. _Jonathan's call._
+- **Decided:** the finance folder stays in the **church Workspace** (`jonathan@arapahoumc.org`) —
+  it's Jonathan's primary place for both personal and church work right now. Tradeoff noted
+  (personal financial records live in the church tenant); accepted by choice. Keep RLS on in
+  Supabase and rely on folder scoping in Drive.
 - Data minimization: don't pull raw transaction rows into general CoS context; the subagent
   reads them deliberately, scoped to the question.
 
 ---
 
-## 12. Open decisions (need Jonathan)
+## 12. Decisions
 
-1. **YouTube playlist link** + visibility (public / unlisted / private).
-2. **Church vs. personal Google account** for the finance folder (privacy).
-3. Confirm **propose-and-approve** for contradictions (recommended) vs. auto-merge. _(Tentatively: approve-gate.)_
-4. Approval surface: conversational `/finance-review` (recommended) vs. dashboard section.
+- ✅ **YouTube playlist:** `PLag8ZX1E6YzzbCeHRcREIUhev-WuXHrHf` (visibility confirmed at build; moot via authenticated skill).
+- ✅ **Drive account:** stay in the church Workspace (`jonathan@arapahoumc.org`).
+- ✅ **Contradictions:** propose-and-approve gate (default unless Jonathan objects).
+- ✅ **Approval surface:** conversational `/finance-review` to start; dashboard section optional later.
 
 ---
 
