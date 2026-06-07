@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Perry Retirement Lab</title>
+<style>
+  :root{--bg:#f4f6f5;--card:#fff;--ink:#1f2a28;--mut:#6a7a76;--accent:#3f7a63;--line:#e2e8e5;--warn:#b4612f;--good:#2f7d57}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:linear-gradient(120deg,#34604f,#3f7a63);color:#fff;padding:16px 22px;position:sticky;top:0;z-index:5}
+  header h1{margin:0;font-size:19px;font-weight:650}
+  header p{margin:3px 0 0;opacity:.85;font-size:12.5px}
+  .wrap{display:grid;grid-template-columns:340px 1fr;gap:18px;padding:18px;align-items:start}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 14px 12px}
+  details{border-bottom:1px solid var(--line)} details:last-child{border-bottom:none}
+  summary{cursor:pointer;font-weight:600;padding:11px 2px;font-size:13.5px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸";color:var(--accent);margin-right:7px;font-size:11px}
+  details[open] summary::before{content:"▾"}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0}
+  .row label{color:var(--mut);font-size:12.5px;flex:1}
+  .row input[type=number]{width:96px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;text-align:right;font:inherit}
+  .row select{padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:inherit}
+  .row input[type=range]{flex:1.3;accent-color:var(--accent)}
+  .rngval{width:54px;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px}
+  .seg{display:flex;gap:4px} .seg button{flex:1;padding:5px;border:1px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;font:inherit;font-size:12px}
+  .seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .kpi .lbl{color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
+  .kpi .val{font-size:23px;font-weight:680;margin-top:3px;font-variant-numeric:tabular-nums}
+  .kpi .sub{font-size:11.5px;color:var(--mut);margin-top:2px}
+  .kpi.good .val{color:var(--good)} .kpi.warn .val{color:var(--warn)}
+  .panel.results{padding:16px}
+  h3{margin:18px 0 8px;font-size:14px} h3:first-child{margin-top:4px}
+  canvas{width:100%;height:230px;border:1px solid var(--line);border-radius:10px;background:#fbfdfc}
+  table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{position:sticky;top:0;background:#eef3f1;color:var(--mut);font-weight:600}
+  td:first-child,th:first-child{text-align:left}
+  .scroll{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  .phase-bridge{background:#fff7ec}.phase-ss{background:#eef6f1}
+  .note{font-size:11.5px;color:var(--mut);margin:8px 0 0}
+  .legend{display:flex;gap:14px;font-size:11.5px;color:var(--mut);margin:6px 0}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+  .hint{font-size:11px;color:var(--mut)} .btns{display:flex;gap:6px;margin:8px 0}
+  .btns button{padding:6px 10px;border:1px solid var(--accent);background:#fff;color:var(--accent);border-radius:7px;cursor:pointer;font:inherit;font-size:12px}
+  .btns button:hover{background:var(--accent);color:#fff}
+  .cmp td.hl{font-weight:650}
+</style>
+</head>
+<body>
+<header>
+  <h1>Perry Retirement Lab</h1>
+  <p>A planning model — not tax advice. Clergy housing allowance, Rule of 55, and the taxable→convert→pre-tax→Roth order are built in. Inputs auto-save on this device.</p>
+</header>
+<div class="wrap">
+  <div class="panel" id="inputs">
+    <details open><summary>Display</summary>
+      <div class="row"><label>Dollars</label><div class="seg" id="dispSeg"><button data-v="real" class="on">Today's $ (real)</button><button data-v="nom">Future $ (nominal)</button></div></div>
+      <div class="row"><label>Inflation %/yr (for nominal)</label><input type="range" id="infl" min="1.5" max="4" step="0.1" value="2.5"><span class="rngval" id="inflv"></span></div>
+    </details>
+    <details open><summary>You &amp; Lindsey</summary>
+      <div class="row"><label>Your age now</label><input type="number" id="jAge" value="50" step="0.5"></div>
+      <div class="row"><label>Lindsey's age now</label><input type="number" id="lAge" value="50"></div>
+      <div class="row"><label>Your retirement age</label><input type="number" id="jRet" value="65" step="0.5"></div>
+      <div class="row"><label>Lindsey's retirement age</label><input type="number" id="lRet" value="65"></div>
+      <div class="row"><label>Plan to (Lindsey's age)</label><input type="number" id="horizon" value="95"></div>
+    </details>
+    <details><summary>Salaries (today's $)</summary>
+      <div class="row"><label>Your comp (salary+housing)</label><input type="number" id="jSal" value="0" step="1000"></div>
+      <div class="row"><label>Lindsey's salary</label><input type="number" id="lSal" value="0" step="1000"></div>
+      <div class="row"><label>Real salary growth %/yr</label><input type="range" id="salG" min="0" max="3" step="0.1" value="0.5"><span class="rngval" id="salGv"></span></div>
+    </details>
+    <details><summary>Balances today</summary>
+      <div class="row"><label>Your 403(b)/UMPIP</label><input type="number" id="j403" value="0"></div>
+      <div class="row"><label>Your Roth</label><input type="number" id="jRoth" value="0"></div>
+      <div class="row"><label>Your rollover IRA</label><input type="number" id="jIRA" value="0"></div>
+      <div class="row"><label>Lindsey 403(b)</label><input type="number" id="l403" value="0"></div>
+      <div class="row"><label>Lindsey Roth</label><input type="number" id="lRoth" value="0"></div>
+      <div class="row"><label>Lindsey rollover IRA</label><input type="number" id="lIRA" value="0"></div>
+      <div class="row"><label>Joint taxable</label><input type="number" id="tax0" value="0"></div>
+    </details>
+    <details open><summary>Contributions</summary>
+      <div class="row"><label>Max both 403(b)s + Roth IRAs</label><div class="seg" id="maxSeg"><button data-v="1" class="on">Max</button><button data-v="0">Custom</button></div></div>
+      <div class="row"><label>Your 403(b) elective (if custom)</label><input type="number" id="j403c" value="24500"></div>
+      <div class="row"><label>Lindsey 403(b) elective (if custom)</label><input type="number" id="l403c" value="24500"></div>
+      <div class="row"><label>Your employer flat $/mo</label><input type="number" id="empFlat" value="150"></div>
+      <div class="row"><label>Your employer match %</label><input type="number" id="empPct" value="4" step="0.5"></div>
+      <div class="row"><label>Lindsey match %</label><input type="number" id="lMatch" value="9" step="0.5"></div>
+      <div class="row"><label>To taxable brokerage $/yr</label><input type="number" id="taxAdd" value="0" step="1000"></div>
+    </details>
+    <details><summary>Growth — simple or per-bucket</summary>
+      <div class="row"><label>Mode</label><div class="seg" id="allocSeg"><button data-v="0" class="on">Simple</button><button data-v="1">Per-bucket</button></div></div>
+      <div class="row"><label>Simple: real return accumulating %</label><input type="range" id="accR" min="2" max="7" step="0.25" value="5"><span class="rngval" id="accRv"></span></div>
+      <div class="row"><label>Simple: real return in retirement %</label><input type="range" id="decR" min="1.5" max="6" step="0.25" value="3.5"><span class="rngval" id="decRv"></span></div>
+      <div class="hint" style="margin-top:6px"><b>Per-bucket</b> (real returns): equity & bond, then equity% per bucket.</div>
+      <div class="row"><label>Equity real return %</label><input type="range" id="eqR" min="3" max="9" step="0.25" value="6"><span class="rngval" id="eqRv"></span></div>
+      <div class="row"><label>Bond real return %</label><input type="range" id="bdR" min="0" max="4" step="0.25" value="2"><span class="rngval" id="bdRv"></span></div>
+      <div class="row"><label>Equity % — pre-tax (clergy: low)</label><input type="range" id="eqPre" min="0" max="100" step="5" value="40"><span class="rngval" id="eqPrev"></span></div>
+      <div class="row"><label>Equity % — Roth (growth here)</label><input type="range" id="eqRoth" min="0" max="100" step="5" value="90"><span class="rngval" id="eqRothv"></span></div>
+      <div class="row"><label>Equity % — taxable</label><input type="range" id="eqTax" min="0" max="100" step="5" value="70"><span class="rngval" id="eqTaxv"></span></div>
+    </details>
+    <details><summary>Taxes &amp; Social Security</summary>
+      <div class="row"><label>Effective tax rate, working %</label><input type="range" id="taxW" min="5" max="35" step="1" value="18"><span class="rngval" id="taxWv"></span></div>
+      <div class="row"><label>Your PIA @67 ($/yr)</label><input type="number" id="jPIA" value="0"></div>
+      <div class="row"><label>Lindsey PIA @67 ($/yr)</label><input type="number" id="lPIA" value="0"></div>
+      <div class="row"><label>You claim at</label><select id="jClaim"><option>62</option><option selected>67</option><option>70</option></select></div>
+      <div class="row"><label>Lindsey claims at</label><select id="lClaim"><option>62</option><option selected>67</option><option>70</option></select></div>
+      <div class="row"><label>Frozen DB pension $/yr</label><input type="number" id="pension" value="0"></div>
+      <div class="row"><label>Pension starts (your age)</label><input type="number" id="penAge" value="65"></div>
+    </details>
+    <details open><summary>Spending strategy</summary>
+      <div class="row"><label>Mode</label><div class="seg" id="spendSeg"><button data-v="solve" class="on">Solve max</button><button data-v="set">Set target</button></div></div>
+      <div class="row"><label>Target spend (if set) $/yr</label><input type="number" id="spendTgt" value="120000" step="5000"></div>
+      <div class="row"><label>Smile curve</label><div class="seg" id="smileSeg"><button data-v="1" class="on">On</button><button data-v="0">Flat</button></div></div>
+      <div class="row"><label>Legacy to preserve ($)</label><input type="number" id="legacy" value="0" step="100000"></div>
+      <div class="row"><label>Roth conversion in bridge $/yr</label><input type="number" id="conv" value="0" step="10000"></div>
+    </details>
+    <details open><summary>Scenarios (compare)</summary>
+      <div class="btns"><button onclick="snap('A')">Save A</button><button onclick="snap('B')">Save B</button><button onclick="snap('C')">Save C</button><button onclick="clearSnaps()">Clear</button></div>
+      <div class="hint">Set inputs, click Save A; change inputs (e.g. retire at 52), Save B; compare below.</div>
+    </details>
+    <details open><summary>Your data (safe prepopulate)</summary>
+      <div class="btns"><button id="expBtn">Copy private link</button><button id="impBtn">Import link/code</button></div>
+      <div class="hint">"Copy private link" bakes your numbers into a URL (never sent to any server — it lives after the # only). Open it on any device to prepopulate, then it auto-clears from the address bar and saves locally. Keep the link private — treat it like a password.</div>
+    </details>
+  </div>
+
+  <div>
+    <div class="cards" id="kpis"></div>
+    <div class="panel results">
+      <h3>Cash flow now — what maxing leaves you to live on</h3>
+      <div id="cashflow"></div>
+      <div id="cmpWrap" style="display:none"><h3>Scenario compare</h3><table class="cmp" id="cmpTbl"></table></div>
+      <h3>Portfolio trajectory</h3>
+      <div class="legend"><span><i style="background:#3f7a63"></i>Total portfolio</span><span><i style="background:#b4612f"></i>Spending</span><span id="modeLbl"></span></div>
+      <canvas id="chart" width="900" height="230"></canvas>
+      <h3>Accumulation — year by year</h3>
+      <div class="scroll"><table id="accTbl"></table></div>
+      <h3>Decumulation — year by year <span class="hint">(shaded = pre-SS bridge / conversion window)</span></h3>
+      <div class="scroll"><table id="decTbl"></table></div>
+      <p class="note" id="caveat"></p>
+    </div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const ELECT=24500,CU=8000,SUPER=11250,RIRA=7000,RIRA_CU=1000;
+const elective=a=>a>=60&&a<=63?ELECT+SUPER:a>=50?ELECT+CU:ELECT;
+const rothIRA=a=>a>=50?RIRA+RIRA_CU:RIRA;
+const ssF=c=>{c=+c;return c<=62?.70:c>=70?1.24:c>=67?1+0.08*(c-67):1-(67-c)*0.0625;};
+const smile=(al,on)=>!on?1:al<65?1:al<75?1-0.01*(al-65):al<85?0.90-0.005*(al-75):0.855+0.02*(al-85);
+const S={maxC:1,spendMode:'solve',smile:1,alloc:0,disp:'real'};
+const FIELDS=['jAge','lAge','jRet','lRet','horizon','jSal','lSal','salG','j403','jRoth','jIRA','l403','lRoth','lIRA','tax0','j403c','l403c','empFlat','empPct','lMatch','taxAdd','accR','decR','eqR','bdR','eqPre','eqRoth','eqTax','taxW','jPIA','lPIA','jClaim','lClaim','pension','penAge','spendTgt','legacy','conv','infl'];
+
+function readInputs(){
+  const g=id=>parseFloat($(id).value)||0;
+  const p={jAge:g('jAge'),lAge:g('lAge'),jRet:g('jRet'),lRet:g('lRet'),horizon:g('horizon'),
+    jSal:g('jSal'),lSal:g('lSal'),salG:g('salG')/100,
+    j403:g('j403'),jRoth:g('jRoth'),jIRA:g('jIRA'),l403:g('l403'),lRoth:g('lRoth'),lIRA:g('lIRA'),tax0:g('tax0'),
+    maxC:S.maxC,j403c:g('j403c'),l403c:g('l403c'),empFlat:g('empFlat'),empPct:g('empPct')/100,lMatch:g('lMatch')/100,taxAdd:g('taxAdd'),
+    alloc:S.alloc,accR:g('accR')/100,decR:g('decR')/100,eqR:g('eqR')/100,bdR:g('bdR')/100,eqPre:g('eqPre')/100,eqRoth:g('eqRoth')/100,eqTax:g('eqTax')/100,
+    taxW:g('taxW')/100,jPIA:g('jPIA'),lPIA:g('lPIA'),jClaim:+$('jClaim').value,lClaim:+$('lClaim').value,pension:g('pension'),penAge:g('penAge'),
+    spendMode:S.spendMode,spendTgt:g('spendTgt'),smile:S.smile,legacy:g('legacy'),conv:g('conv'),disp:S.disp,infl:g('infl')/100};
+  // bucket returns
+  if(p.alloc){ p.rPre=p.eqPre*p.eqR+(1-p.eqPre)*p.bdR; p.rRoth=p.eqRoth*p.eqR+(1-p.eqRoth)*p.bdR; p.rTax=p.eqTax*p.eqR+(1-p.eqTax)*p.bdR; }
+  else { p.rPre=p.rRoth=p.rTax=p.accR; }
+  p.rPreD=p.alloc?p.rPre:p.decR; p.rRothD=p.alloc?p.rRoth:p.decR; p.rTaxD=p.alloc?p.rTax:p.decR;
+  return p;
+}
+
+function accumulate(p){
+  let pre=p.j403+p.jIRA+p.l403+p.lIRA,roth=p.jRoth+p.lRoth,tax=p.tax0;
+  const rows=[],yrs=Math.ceil(Math.max(p.jRet-p.jAge,p.lRet-p.lAge)); let js=p.jSal,ls=p.lSal;
+  for(let t=0;t<yrs;t++){
+    const ja=p.jAge+t,la=p.lAge+t,jW=ja<p.jRet,lW=la<p.lRet;
+    const jEl=jW?(p.maxC?elective(ja):p.j403c):0, lEl=lW?(p.maxC?elective(la):p.l403c):0;
+    const jEmp=jW?(p.empFlat*12+p.empPct*js):0, lEmp=lW?(p.lMatch*ls):0;
+    const jR=jW&&p.maxC?rothIRA(ja):0, lR=lW&&p.maxC?rothIRA(la):0, tAdd=(jW||lW)?p.taxAdd:0;
+    pre=pre*(1+p.rPre)+jEl+lEl+jEmp+lEmp; roth=roth*(1+p.rRoth)+jR+lR; tax=tax*(1+p.rTax)+tAdd;
+    rows.push({yr:2026+t,ja,la,cin:jEl+lEl+jEmp+lEmp+jR+lR+tAdd,pre,roth,tax,tot:pre+roth+tax}); js*=1+p.salG;ls*=1+p.salG;
+  }
+  return {rows,pre,roth,tax,start:pre+roth+tax,retYr:2026+yrs};
+}
+
+function decumulate(p,acc,spend){
+  let pre=acc.pre,roth=acc.roth,tax=acc.tax; const rows=[]; let dep=null;
+  const years=Math.round(p.horizon-p.lRet);
+  for(let k=0;k<years;k++){
+    const ja=p.jRet+k,la=p.lRet+k;
+    pre*=1+p.rPreD; roth*=1+p.rRothD; tax*=1+p.rTaxD;
+    const ss=(ja>=p.jClaim?p.jPIA*ssF(p.jClaim):0)+(la>=p.lClaim?p.lPIA*ssF(p.lClaim):0), pen=ja>=p.penAge?p.pension:0;
+    let conv=0; if(p.conv>0&&ss<=0&&pre>0){conv=Math.min(p.conv,pre);pre-=conv;roth+=conv;tax-=conv*0.12;}
+    const need=Math.max(0,spend*smile(la,p.smile)-ss-pen);
+    let rem=need; const tk=Math.min(rem,Math.max(0,tax));tax-=tk;rem-=tk;
+    const pk=Math.min(rem,Math.max(0,pre));pre-=pk;rem-=pk;
+    const rk=Math.min(rem,Math.max(0,roth));roth-=rk;rem-=rk;
+    const bal=pre+roth+tax; if(bal<=0&&dep===null)dep=la;
+    rows.push({yr:acc.retYr+k,ja,la,spend:spend*smile(la,p.smile),ss,pen,conv,fromT:tk,fromP:pk,fromR:rk,pre:Math.max(0,pre),roth:Math.max(0,roth),tax:Math.max(0,tax),bal:Math.max(0,bal),bridge:ss<=0});
+    if(rem>0)break;
+  }
+  const end=rows.length?rows[rows.length-1].bal:0;
+  return {rows,ok:dep===null&&end>=p.legacy,dep,end};
+}
+const solveSpend=(p,acc)=>{let lo=10000,hi=400000;for(let i=0;i<46;i++){const m=(lo+hi)/2;decumulate(p,acc,m).ok?lo=m:hi=m;}return lo;};
+
+// nominal display: multiply real value by (1+infl)^(yr-2026)
+function disp(p){ return (v,yr)=> p.disp==='nom'? v*Math.pow(1+p.infl,(yr||2026)-2026): v; }
+const fk=n=>'$'+Math.round(n/1000).toLocaleString()+'k';
+const f0=n=>'$'+Math.round(n).toLocaleString();
+
+function compute(p){ const acc=accumulate(p); const spend=p.spendMode==='solve'?solveSpend(p,acc):p.spendTgt; const dec=decumulate(p,acc,spend); return {acc,spend,dec}; }
+
+function drawChart(dec,p){
+  const c=$('chart'),x=c.getContext('2d'),W=c.width=c.clientWidth,H=c.height; x.clearRect(0,0,W,H); if(!dec.rows.length)return;
+  const D=disp(p); const bals=dec.rows.map(r=>D(r.bal,r.yr)), sps=dec.rows.map(r=>D(r.spend,r.yr));
+  const maxBal=Math.max(...bals,1),maxSp=Math.max(...sps,1),n=dec.rows.length,pad=36;
+  const px=i=>pad+(W-pad-8)*i/(n-1),py=v=>H-22-(H-44)*v/maxBal;
+  x.strokeStyle='#eef3f1';x.fillStyle='#9aa';x.font='10px sans-serif';
+  for(let g=0;g<=4;g++){const v=maxBal*g/4,y=py(v);x.beginPath();x.moveTo(pad,y);x.lineTo(W-8,y);x.stroke();x.fillText('$'+(v/1e6).toFixed(1)+'M',2,y+3);}
+  x.strokeStyle='#3f7a63';x.lineWidth=2;x.beginPath();bals.forEach((v,i)=>{const X=px(i),Y=py(v);i?x.lineTo(X,Y):x.moveTo(X,Y);});x.stroke();
+  x.strokeStyle='#b4612f';x.lineWidth=1.5;x.beginPath();sps.forEach((v,i)=>{const X=px(i),Y=py(v/maxSp*maxBal);i?x.lineTo(X,Y):x.moveTo(X,Y);});x.stroke();
+  x.fillStyle='#9aa';[0,Math.floor(n/2),n-1].forEach(i=>x.fillText('L'+Math.round(dec.rows[i].la),px(i)-8,H-6));
+}
+
+let snaps={};
+function snap(k){ snaps[k]={p:JSON.parse(JSON.stringify(readInputs())), label:k}; renderCompare(); }
+function clearSnaps(){ snaps={}; renderCompare(); }
+function renderCompare(){
+  const keys=Object.keys(snaps); const wrap=$('cmpWrap');
+  if(!keys.length){wrap.style.display='none';return;} wrap.style.display='block';
+  const cols=keys.map(k=>{const p=snaps[k].p; const {acc,spend,dec}=compute(p); return {k,p,acc,spend,dec};});
+  const D=p=>disp(p);
+  const r=(lbl,fn)=>`<tr><td>${lbl}</td>${cols.map(c=>`<td>${fn(c)}</td>`).join('')}</tr>`;
+  $('cmpTbl').innerHTML=`<tr><th>Scenario</th>${cols.map(c=>`<th>${c.k}</th>`).join('')}</tr>`+
+    r('Retire (you / Lindsey)',c=>`${c.p.jRet} / ${c.p.lRet}`)+
+    r('SS claim (you / Lin)',c=>`${c.p.jClaim} / ${c.p.lClaim}`)+
+    r('Portfolio at retirement',c=>fk(D(c.p)(c.acc.start,c.acc.retYr)))+
+    `<tr class="cmp"><td class="hl">${cols[0]&&cols[0].p.spendMode==='solve'?'Sustainable spend':'Target spend'}</td>${cols.map(c=>`<td class="hl">${fk(D(c.p)(c.spend,c.acc.retYr))}</td>`).join('')}</tr>`+
+    r('Money lasts to (L age)',c=>c.dec.dep?('L'+Math.round(c.dec.dep)):('L'+c.p.horizon+'+'))+
+    r('Left to live on (now)',c=>{const oop=(c.p.maxC?elective(c.p.jAge):c.p.j403c)+(c.p.maxC?elective(c.p.lAge):c.p.l403c)+(c.p.maxC?rothIRA(c.p.jAge)+rothIRA(c.p.lAge):0)+c.p.taxAdd;return fk((c.p.jSal+c.p.lSal)*(1-c.p.taxW)-oop);});
+}
+
+function render(){
+  const p=readInputs(); const D=disp(p); const {acc,spend,dec}=compute(p);
+  // persist
+  const store={}; FIELDS.forEach(f=>store[f]=$(f)?$(f).value:null); store._S=S; store._snaps=snaps;
+  try{localStorage.setItem('perryLab',JSON.stringify(store));}catch(e){}
+  // cash flow now
+  const gross=p.jSal+p.lSal;
+  const oop=(p.maxC?elective(p.jAge):p.j403c)+(p.maxC?elective(p.lAge):p.l403c)+(p.maxC?rothIRA(p.jAge)+rothIRA(p.lAge):0)+p.taxAdd;
+  const tax=gross*p.taxW,take=gross-tax,live=take-oop;
+  $('cashflow').innerHTML=`<table>
+    <tr><td>Gross household (you ${f0(p.jSal)} + Lindsey ${f0(p.lSal)})</td><td>${f0(gross)}</td></tr>
+    <tr><td>– est. taxes (${Math.round(p.taxW*100)}%, incl. SECA)</td><td>−${f0(tax)}</td></tr>
+    <tr><td><b>Take-home</b></td><td><b>${f0(take)}</b></td></tr>
+    <tr><td>– your savings out of pocket</td><td>−${f0(oop)}</td></tr>
+    <tr style="background:${live<60000?'#fff2ea':'#eef6f1'}"><td><b>Left to live on</b></td><td><b>${f0(live)}</b> <span class="hint">(${Math.round(live/gross*100)}% of gross)</span></td></tr></table>`;
+  // KPIs
+  const d=dec.dep, sl=p.disp==='nom'?' (then-$)':'';
+  $('kpis').innerHTML=`
+    <div class="kpi"><div class="lbl">Portfolio at retirement${sl}</div><div class="val">${fk(D(acc.start,acc.retYr))}</div><div class="sub">~$${(acc.pre/1e6).toFixed(1)}M pre-tax · $${Math.round(acc.roth/1e3)}k Roth · $${Math.round(acc.tax/1e3)}k taxable (real)</div></div>
+    <div class="kpi ${p.spendMode==='solve'?'good':''}"><div class="lbl">${p.spendMode==='solve'?'Sustainable spend':'Target spend'}${sl}</div><div class="val">${fk(D(spend,acc.retYr))}</div><div class="sub">${f0(D(spend,acc.retYr)/12)}/mo</div></div>
+    <div class="kpi"><div class="lbl">Left to live on now</div><div class="val">${fk(live)}</div><div class="sub">if maxing every bucket</div></div>
+    <div class="kpi ${d&&d<p.horizon?'warn':'good'}"><div class="lbl">Money lasts to</div><div class="val">${d?('L '+Math.round(d)):'L '+p.horizon+'+'}</div><div class="sub">${d&&d<p.horizon?'depletes early — lower spend':'covers the plan'}</div></div>`;
+  $('accTbl').innerHTML='<tr><th>Yr</th><th>You</th><th>Lin</th><th>In</th><th>Pre-tax</th><th>Roth</th><th>Taxable</th><th>Total</th></tr>'+
+    acc.rows.map(r=>`<tr><td>${r.yr}</td><td>${r.ja}</td><td>${r.la}</td><td>${fk(D(r.cin,r.yr))}</td><td>${fk(D(r.pre,r.yr))}</td><td>${fk(D(r.roth,r.yr))}</td><td>${fk(D(r.tax,r.yr))}</td><td><b>${fk(D(r.tot,r.yr))}</b></td></tr>`).join('');
+  $('decTbl').innerHTML='<tr><th>Yr</th><th>You</th><th>Lin</th><th>Spend</th><th>SS</th><th>Pens</th><th>Conv</th><th>Taxbl</th><th>Pre-tax</th><th>Roth</th><th>Balance</th></tr>'+
+    dec.rows.map(r=>`<tr class="${r.bridge?'phase-bridge':'phase-ss'}"><td>${r.yr}</td><td>${Math.round(r.ja)}</td><td>${r.la}</td><td>${fk(D(r.spend,r.yr))}</td><td>${r.ss?fk(D(r.ss,r.yr)):'–'}</td><td>${r.pen?fk(D(r.pen,r.yr)):'–'}</td><td>${r.conv?fk(D(r.conv,r.yr)):'–'}</td><td>${fk(D(r.fromT,r.yr))}</td><td>${fk(D(r.fromP,r.yr))}</td><td>${fk(D(r.fromR,r.yr))}</td><td><b>${fk(D(r.bal,r.yr))}</b></td></tr>`).join('');
+  $('modeLbl').textContent=p.disp==='nom'?'(future/nominal $, '+Math.round(p.infl*100*10)/10+'% infl)':'(today\'s $, real)';
+  drawChart(dec,p); renderCompare();
+  $('caveat').textContent="Withdrawal order: taxable → pre-tax (convert to Roth in the pre-SS bridge) → Roth last. Spending shown pre-personal-tax; clergy housing allowance keeps the effective retirement rate low. SS factors approximate — refine PIAs with SSA.gov. Per-bucket mode lets the clergy 403(b) hold bonds (lower return) while the Roth holds growth.";
+  // sync slider labels
+  [['salG','%'],['accR','%'],['decR','%'],['taxW','%'],['eqR','%'],['bdR','%'],['eqPre','%'],['eqRoth','%'],['eqTax','%'],['infl','%']].forEach(([id,u])=>{const e=$(id+'v');if(e)e.textContent=$(id).value+u;});
+}
+
+function seg(id,key,cast){ $(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{$(id).querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');S[key]=cast?cast(b.dataset.v):b.dataset.v;render();}); }
+seg('maxSeg','maxC',v=>+v); seg('spendSeg','spendMode'); seg('smileSeg','smile',v=>+v); seg('allocSeg','alloc',v=>+v); seg('dispSeg','disp');
+// restore saved
+try{const s=JSON.parse(localStorage.getItem('perryLab'));if(s){FIELDS.forEach(f=>{if($(f)&&s[f]!=null)$(f).value=s[f];});if(s._S)Object.assign(S,s._S);if(s._snaps)snaps=s._snaps;
+  // reflect segmented state
+  [['maxSeg','maxC'],['spendSeg','spendMode'],['smileSeg','smile'],['allocSeg','alloc'],['dispSeg','disp']].forEach(([id,k])=>{$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(b.dataset.v)===String(S[k])));});
+}}catch(e){}
+// ---- safe prepopulate: data lives in the link (after #, never sent to server) + localStorage ----
+const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const b64d=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
+const gatherData=()=>{const fields={};FIELDS.forEach(f=>{if($(f))fields[f]=$(f).value;});return {fields,S,snaps};};
+function applyData(o){try{
+  if(o.fields)FIELDS.forEach(f=>{if($(f)&&o.fields[f]!=null)$(f).value=o.fields[f];});
+  if(o.S)Object.assign(S,o.S); if(o.snaps)snaps=o.snaps;
+  [['maxSeg','maxC'],['spendSeg','spendMode'],['smileSeg','smile'],['allocSeg','alloc'],['dispSeg','disp']].forEach(([id,k])=>{$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('on',String(b.dataset.v)===String(S[k])));});
+  render();
+}catch(e){alert('Could not load data: '+e.message);}}
+$('expBtn').onclick=()=>{const link=location.origin+location.pathname+'#d='+b64e(gatherData());
+  (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(()=>alert('Private prepopulate link copied. Keep it private — it contains your numbers. Open it on any device to load.'),()=>prompt('Copy your private link:',link));};
+$('impBtn').onclick=()=>{const s=prompt('Paste a prepopulate link or code:');if(!s)return;const m=s.match(/#d=(.+)$/);applyData(b64d(m?m[1]:s.trim()));};
+// auto-load from URL hash, then clean the address bar so the bare bookmark carries no data
+(function(){const m=location.hash.match(/^#d=(.+)$/);if(m){try{applyData(b64d(m[1]));history.replaceState(null,'',location.pathname+location.search);}catch(e){console.warn('hash load failed',e);}}})();
+document.querySelectorAll('#inputs input, #inputs select').forEach(el=>el.addEventListener('input',render));
+render(); window.addEventListener('resize',render);
+</script>
+</body>
+</html>
