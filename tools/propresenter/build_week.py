@@ -16,13 +16,13 @@ whose value has no confident match, is left as the template default (and reporte
 Library .pro files for swapped-in items must be present in <swapcache> (fetch from the Drive
 mirror of ~/Documents/ProPresenter/Libraries).  CTW .pro path passed via --ctw.
 """
-import csv, sys, os, shutil, zipfile, importlib.util, argparse
+import csv, sys, os, uuid as _uuid, importlib.util, argparse
 
 _HERE=os.path.dirname(__file__)
 def _load(n):
     s=importlib.util.spec_from_file_location(n, os.path.join(_HERE,n+".py"))
     m=importlib.util.module_from_spec(s); s.loader.exec_module(m); return m
-pb=_load("pb"); ml=_load("match_library"); sm=_load("slot_map")
+pb=_load("pb"); ml=_load("match_library"); sm=_load("slot_map"); ppzip=_load("ppzip")
 INV=__import__("json").load(open(os.path.join(_HERE,"data","library_inventory.json")))
 HYMNS,L3S=INV["hymns"],INV["l3s"]
 
@@ -55,7 +55,33 @@ def rewrite_item(child, new_basename):
         fld.dirty=True
     return old_base
 
-def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, communion=None):
+# ---- item cloning / insertion (for the Community Prayer sequence) ----
+def _ref_is(c, suffix):
+    r=sm._ref(c.msg); return bool(r) and r.endswith(suffix)
+def _clone(field):
+    return pb.parse(field.raw_full)[0]            # independent deep copy via re-parse
+def _fresh_uuid(item):
+    """Give a cloned item a brand-new cue UUID at /1/1/6 (replace the whole field —
+    the stored UUID sometimes mis-parses as a sub-message)."""
+    A=_get(item.msg,1); B=_get(A.msg,1)
+    B.msg=[pb.sfield(6, str(_uuid.uuid4()).upper()) if f.fn==6 else f for f in B.msg]
+    for f in (item,A,B): f.dirty=True
+def insert_community_prayer(a13, children, leader_basename, report):
+    """Replace the Baptismal Liturgy item with: blank · leader L3 · Lord's Prayer · blank."""
+    bap=next((c for c in children if _ref_is(c,"Baptismal Liturgy.pro")), None)
+    if bap is None:
+        report.append("  · Community Prayer: no Baptismal Liturgy item, skipped"); return None
+    wb=next(c for c in children if _ref_is(c,"Worship Blank.pro"))   # /4/1/2 ref shape
+    jp=next(c for c in children if _ref_is(c,"L3 - JONATHAN PERRY.pro"))  # /4/1/1 ref shape
+    b1=_clone(wb); _fresh_uuid(b1)
+    l3=_clone(jp); rewrite_item(l3, leader_basename); _fresh_uuid(l3)
+    lp=_clone(bap); rewrite_item(lp, "Lord's Prayer.pro"); _fresh_uuid(lp)
+    b2=_clone(wb); _fresh_uuid(b2)
+    i=a13.msg.index(bap); a13.msg[i:i+1]=[b1,l3,lp,b2]
+    report.append(f"  ✓ Community Prayer: Baptismal Liturgy → blank · {leader_basename[:-4]} · Lord's Prayer · blank")
+    return ("Baptismal Liturgy.pro", [leader_basename, "Lord's Prayer.pro"])
+
+def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, baptism=False):
     rows=list(csv.reader(open(csv_path,newline="")))
     row=next((r for r in rows[1:] if len(r)>1 and r[1].strip().lower()==date.strip().lower()),None)
     assert row, f"no row for {date!r}"
@@ -102,6 +128,16 @@ def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, communion=
     labels=["Welcome person","Accompanist","Invitation person"]
     for i,c in enumerate(persons[:3]):
         do_swap(c, pers[i], labels[i])
+    # Community Prayer (typical Sunday): swap the special-case Baptismal Liturgy for the
+    # standard blank · leader-L3 · Lord's Prayer · blank sequence (leader from col 24).
+    if not baptism:
+        cp=ml.match_person(g(24),L3S) if g(24) else None
+        if cp:
+            res=insert_community_prayer(a13, children, cp, report)
+            if res: removed.add(res[0]); added.extend(res[1])
+        else:
+            report.append("  · Community Prayer: col-24 leader empty/no match, kept Baptismal Liturgy")
+
     # CTW: keep its path, just overwrite bundled .pro
     if ctw is not None:
         report.append("  ✓ Call to Worship: regenerated CALL TO WORSHIP-2.pro")
@@ -112,29 +148,18 @@ def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, communion=
     for fld in (a3,a12,a1,a13): fld.dirty=True
     new_data=pb.encode(root)
 
-    # assemble work dir
-    work=out_path+".work"
-    if os.path.exists(work): shutil.rmtree(work)
-    shutil.copytree(template_dir, work, ignore=shutil.ignore_patterns("__MACOSX"))
-    open(os.path.join(work,"data"),"wb").write(new_data)
-    for b in removed:
-        p=os.path.join(work,b)
-        if os.path.exists(p): os.remove(p)
+    # assemble bundle: flat .pro files + data (NO media tree), in ProPresenter's zip dialect
+    present={fn:os.path.join(template_dir,fn) for fn in os.listdir(template_dir)
+             if fn.endswith(".pro") and os.path.isfile(os.path.join(template_dir,fn))}
+    for b in removed: present.pop(b, None)
     for b in added:
-        src=os.path.join(swapcache,b)
-        assert os.path.exists(src), f"missing swap file: {src}"
-        shutil.copy(src, os.path.join(work,b))
-    shutil.copy(ctw_pro, os.path.join(work,"CALL TO WORSHIP-2.pro"))
-
-    # zip (stored) -> .proplaylist
-    if os.path.exists(out_path): os.remove(out_path)
-    with zipfile.ZipFile(out_path,"w",zipfile.ZIP_STORED) as z:
-        for dp,_,fns in os.walk(work):
-            for fn in fns:
-                full=os.path.join(dp,fn); arc=os.path.relpath(full,work)
-                z.write(full,arc)
-    shutil.rmtree(work)
-    print(f"=== Built {out_path}  ({os.path.getsize(out_path)} bytes) ===")
+        src=os.path.join(swapcache,b); assert os.path.exists(src), f"missing swap file: {src}"
+        present[b]=src
+    present["CALL TO WORSHIP-2.pro"]=ctw_pro            # overwrite bundled CTW
+    entries=[(fn, open(present[fn],"rb").read()) for fn in sorted(present)]
+    entries.append(("data", new_data))                 # data last, like real exports
+    ppzip.write(out_path, entries)
+    print(f"=== Built {out_path}  ({os.path.getsize(out_path)} bytes, {len(entries)} entries) ===")
     print("\n".join(report))
     return out_path
 
