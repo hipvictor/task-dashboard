@@ -252,6 +252,36 @@ User-specified handling for each element type:
 
 ---
 
+## 9. PROGRESS LOG
+
+### ✅ Milestone 1 — Slide generation + packaging (VALIDATED on home machine, 2026-06-10)
+First end-to-end proof of concept built and **confirmed working by test-import on the user's
+home ProPresenter**.
+
+What was proven:
+- **`tools/propresenter/pb.py`** — schema-free protobuf codec, byte-exact round-trip on all
+  real `.pro`/`data` files. Includes `make_run(...)` for building styling runs.
+- **Generated a new Call to Worship** (`tools/propresenter/gen_ctw_june14_poc.py`) for
+  June 14 (Juneteenth / Phil 2) via **template-and-replace** on `CALL TO WORSHIP-2.pro`:
+  replaced text in 5 slide slots, preserving fonts/sizes/centering/white color.
+- **Styling fix:** first attempt edited only the RTF → all bold lost. Root cause: styling is
+  in native `fn=13` character-range runs (see §7.6), not the RTF. Regenerated the runs to
+  match new text offsets → **Leader regular, People/All bold** (church convention). Confirmed
+  correct on import.
+- **Playlist title** renamed via the manifest (`data` field `3/12/1/2`):
+  "Standard Worship Service" → "June 14 v2". Confirmed it shows in the library.
+- **Packaged** a valid `.proplaylist` (standard ZIP, stored) that ProPresenter imports cleanly.
+
+Delivered bundle: `June 14 v2.proplaylist`.
+
+### ▶ Milestone 2 — Assemble the manifest from the spreadsheet (IN PROGRESS)
+Next: stop reusing an existing `data` manifest and instead **build the playlist from the
+spreadsheet row**: parse service order → fuzzy-match each item to a `Libraries/*.pro` →
+insert hook-video + sermon placeholders (per §8.4) → construct the `data` manifest in order →
+zip. Requires decoding the manifest's group/item structure well enough to construct it.
+
+---
+
 ## Sources
 - Working with Files — Renewed Vision: https://learn.renewedvision.com/propresenter/working-with-files
 - Syncing Between Computers: https://support.renewedvision.com/hc/en-us/articles/360041588774-Syncing-Between-Computers-with-ProPresenter
