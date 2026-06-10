@@ -446,3 +446,23 @@ to match PP's ZIP64 layout.
 Title` — the week's anthem text ("The Road Home by Stephen Paulus") is not auto-filled yet.
 **Next:** home test-import → confirm → then add special-music card text + wire CTW-doc → CTW
 `.pro` regeneration into `build_week` so any date builds in one command.
+
+### 8.8 v2 — import fixes (after first home test)
+First home import reported: hymns showed as "presentation there, no slides." Root cause: the
+re-zip used Python's `zipfile`, but **ProPresenter writes a non-standard ZIP64** its importer
+depends on — it read `data` but couldn't index the bundled `.pro` entries. `ppzip.py` now
+replicates PP's exact dialect (stored, ver 45, every entry forces `0xFFFFFFFF` sizes + a
+24-byte zip64 extra `[usize,csize,offset]`; Zip64 EOCD + locator + classic EOCD), verified
+byte-for-byte vs a real church export. Bundle is flat `.pro` + `data` only (no media tree).
+
+Also in v2:
+- **CTW liturgist**: title's second line now shows the liturgist (col 12) instead of the
+  theme word; all other CTW slides byte-identical.
+- **Community Prayer**: typical Sundays replace the special-case `Baptismal Liturgy` with
+  `blank · leader-L3 (col 24) · Lord's Prayer · blank` (clone template items, rewrite refs,
+  fresh cue UUIDs). `build_week(..., baptism=True)` keeps the Baptismal Liturgy for baptism
+  Sundays. Library has `L3 - Community Prayer Name.pro` as a generic fallback when the leader
+  has no personal L3.
+
+v2 self-verify (June 14): 42 items, 27 refs, **zero dangling**, 23 entries CRC-valid, all
+swaps + community-prayer block present, Baptismal Liturgy removed, CTW title = liturgist.
