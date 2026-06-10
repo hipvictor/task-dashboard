@@ -136,6 +136,9 @@ generator targets.**
     relative library path and an absolute `file:///Users/avmac/Documents/ProPresenter/...`
     URL. ⚠️ The church machine's user is **`avmac`** — absolute paths are machine-specific;
     rely on the relative `Libraries/...` paths when generating.
+- **Playlist title (display name):** stored in the `data` manifest as a string leaf at
+  field path `3/12/1/2`. Set this to the service date (e.g. "June 14", or "June 14 v2"
+  when versioning) when generating.
 - **Library folders in use:** `Hymns & Songs`, `Name Lower Thirds`, `Worship Service Setup`,
   `Slideshows`. (Lower-thirds `L3 - …` files are reused every week.)
 
