@@ -415,3 +415,22 @@ skill: `arapaho-service-schedule-key.md`). **Read it as CSV** (`download_file_co
 `exportMimeType=text/csv`) — the markdown/`read_file_content` render silently drops trailing
 columns and is NOT reliable for column-accurate values. Point Person (col A) rotates among
 Terri/Aaron/Cathy/Jonathan/Jenny and is NOT the Liturgist (col M).
+
+### 8.6 Pre-build analyzer — BUILT + verified on real weeks
+`tools/propresenter/analyze_week.py` reads the schedule CSV + a target date and prints a
+**build plan** for human review before anything is generated (per user: "analyze the info
+and missing things before building"). It picks the template (Standard/Communion), maps each
+swap slot to its column, runs the matcher, and flags gaps. Behavior rules wired in:
+- **Empty source cell** → keep template default, **flag for review** (e.g. May 3 Welcome).
+- **No confident match** → **placeholder + report** (e.g. VBS "Philippians Four Thirteen",
+  "Snowball Mountain Challenge" — special weeks flagged, never silently guessed).
+
+Verified output on three real weeks: **June 14** (Standard) all 7 slots resolved; **June 7**
+(Communion) flags the two VBS non-library items; **May 3** (Communion) matches Ashton Landry
+→ `L3 - Ashton Landry`, cathy → `L3 - CATHY`, flags empty Welcome. Inventory cached in
+`data/library_inventory.json` (200 hymns, 154 L3s); refresh from the Drive mirror.
+Demo fixture (`data/schedule_sample.csv`) holds real values for these weeks.
+
+**Remaining to reach a full build:** (1) clone the chosen template's `data` manifest and
+swap matched refs into slots A–F + the special-music card; (2) regenerate the CTW `.pro` from
+the week's CTW doc; (3) rezip as `.proplaylist`; (4) home-machine test-import.
