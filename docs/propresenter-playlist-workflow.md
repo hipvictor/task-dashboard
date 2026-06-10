@@ -431,6 +431,18 @@ Verified output on three real weeks: **June 14** (Standard) all 7 slots resolved
 `data/library_inventory.json` (200 hymns, 154 L3s); refresh from the Drive mirror.
 Demo fixture (`data/schedule_sample.csv`) holds real values for these weeks.
 
-**Remaining to reach a full build:** (1) clone the chosen template's `data` manifest and
-swap matched refs into slots A–F + the special-music card; (2) regenerate the CTW `.pro` from
-the week's CTW doc; (3) rezip as `.proplaylist`; (4) home-machine test-import.
+### 8.7 First full build — DONE (June 14), awaiting home test-import
+`build_week.py` produced **`June 14.proplaylist`** end-to-end from the Standard template.
+Self-verification on the output: playlist retitled "June 14"; **all 24 manifest refs resolve
+to a bundled `.pro` (zero dangling)**; swaps landed (519, 2172, Jack Knagg, Aaron Manes);
+swapped-out files removed; CTW deck = regenerated Juneteenth `.pro`; bundled library files
+byte-identical to Drive originals; unedited items byte-identical to template. Output is a
+standard `ZIP_STORED` archive (stock `unzip` reads it).
+
+**Open risk (only a home test can settle):** whether PP7 import accepts this standard stored
+zip vs the native ZIP64-quirk format PP writes on export. If import fails, switch the writer
+to match PP's ZIP64 layout.
+**Known v1 gap:** the special-music title card is left as the generic template `L3 - Song
+Title` — the week's anthem text ("The Road Home by Stephen Paulus") is not auto-filled yet.
+**Next:** home test-import → confirm → then add special-music card text + wire CTW-doc → CTW
+`.pro` regeneration into `build_week` so any date builds in one command.

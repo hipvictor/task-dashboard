@@ -93,7 +93,7 @@ def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, communion=
         cur=sm._ref(child.msg).split("/")[-1]
         if cur==target_basename:
             report.append(f"  · {label}: unchanged ({cur})"); return
-        old=rewrite_item(child.msg, target_basename)
+        old=rewrite_item(child, target_basename)
         removed.add(old); added.append(target_basename)
         report.append(f"  ✓ {label}: {old}  →  {target_basename}")
 
