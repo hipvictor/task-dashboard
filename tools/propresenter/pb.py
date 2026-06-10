@@ -71,3 +71,21 @@ def encode(fields):
             out += write_varint(len(val)) + val
         elif f.wt==5: out += f.value
     return bytes(out)
+
+# ---- field builders (for constructing new messages) ----
+import struct as _struct
+def F(fn, wt, value=b'', msg=None):
+    f=Field(fn, wt, b'', value); f.msg=msg; f.dirty=True; return f
+def vfield(fn,val):   return F(fn,0,value=val)
+def sfield(fn,s):     return F(fn,2,value=s.encode('utf-8') if isinstance(s,str) else s)
+def f64field(fn,x):   return F(fn,1,value=_struct.pack('<d',x))
+def mfield(fn,subs):  return F(fn,2,msg=subs)
+def make_run(start,end,fontname,size=65.0,bold=False,ital=False,disp='Helvetica Neue'):
+    rng=[]
+    if start: rng.append(vfield(1,start))
+    rng.append(vfield(2,end))
+    font=[sfield(1,fontname), f64field(2,size)]
+    if ital: font.append(vfield(4,1))
+    if bold: font.append(vfield(8,1))
+    font.append(sfield(9,disp))
+    return mfield(13,[mfield(1,rng), mfield(12,font)])

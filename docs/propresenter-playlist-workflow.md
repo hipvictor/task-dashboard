@@ -168,6 +168,21 @@ spreadsheet.) That choice drives the input parser.
 
 ---
 
+### 7.6 STYLING IS IN NATIVE "RUNS", NOT THE RTF (important)
+ProPresenter 7 does NOT render slide styling from the RTF. Each text element's attributes
+message (container fn=3) holds:
+- `fn=1` default font for the whole element (e.g. title uses `Helvetica-Bold` -> whole slide
+  bold, no runs).
+- repeated `fn=13` **runs**: each has a range (`fn=1`: {fn=1 start, fn=2 end}) and a font
+  (`fn=12`: {fn=1 PostScript name, fn=2 size f64, fn=8=1 bold flag, fn=4=1 italic flag,
+  fn=9 display name}). Character indices count EVERY visible char (spaces, nbsp, line breaks
+  each = 1).
+When regenerating slide text you MUST regenerate these runs to match the new character
+offsets, or bold/italic is lost (first attempt edited only the RTF -> all type came out
+regular). `tools/propresenter/pb.py` has `make_run(...)`, validated byte-exact against the
+original runs. Church convention: Leader prompts regular, People/All responses bold.
+
+
 ## 8. THE LIBRARY (pre-built reusable pieces) + the data pipeline
 
 We confirmed the full source pipeline. Three connected sources:
