@@ -129,9 +129,9 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === '/') {
     e.preventDefault();
     toggleSearch();
-  } else if (e.key >= '1' && e.key <= '5') {
+  } else if (e.key >= '1' && e.key <= '4') {
     e.preventDefault();
-    const views = ['tasks', 'people', 'threads', 'briefing', 'review'];
+    const views = ['tasks', 'briefing', 'review', 'email'];
     const view = views[parseInt(e.key) - 1];
     if (view) switchView(view);
   }
@@ -284,9 +284,11 @@ function setTheme(theme) {
     await loadAgenda();
     renderCoachingCard();
 
-    // Deep-link: open the Review tab if URL hash requests it
-    if (location.hash === '#review') {
+    // Deep-link: open a tab if the URL hash requests it (used by iMessage nudges)
+    if (location.hash === '#review' || location.hash === '#proposals') {
       switchView('review');
+    } else if (location.hash === '#email') {
+      switchView('email');
     }
   }
 
@@ -294,34 +296,29 @@ function setTheme(theme) {
   function switchView(viewName) {
     // Hide all views
     document.getElementById('tasks-view').classList.remove('active');
-    document.getElementById('people-view').classList.remove('active');
-    document.getElementById('threads-view').classList.remove('active');
     document.getElementById('briefing-view').classList.remove('active');
     document.getElementById('review-view').classList.remove('active');
+    document.getElementById('email-view').classList.remove('active');
 
     // Remove active class from all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
-    // Show selected view and activate tab
+    // Show selected view and activate tab (tab order: Tasks, Briefing, Proposals, Email)
     if (viewName === 'tasks') {
       document.getElementById('tasks-view').classList.add('active');
       document.querySelectorAll('.tab-btn')[0].classList.add('active');
-    } else if (viewName === 'people') {
-      document.getElementById('people-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[1].classList.add('active');
-      loadPeople();
-    } else if (viewName === 'threads') {
-      document.getElementById('threads-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[2].classList.add('active');
-      loadThreads();
     } else if (viewName === 'briefing') {
       document.getElementById('briefing-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[3].classList.add('active');
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
       loadBriefing();
     } else if (viewName === 'review') {
       document.getElementById('review-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[4].classList.add('active');
+      document.querySelectorAll('.tab-btn')[2].classList.add('active');
       loadReview();
+    } else if (viewName === 'email') {
+      document.getElementById('email-view').classList.add('active');
+      document.querySelectorAll('.tab-btn')[3].classList.add('active');
+      loadEmailQueue();
     }
   }
 
@@ -624,31 +621,39 @@ function setTheme(theme) {
     }
   }
 
+  // Proposals routing: Shelf / Bench / Deferred / Someday / Delegate / Delete.
+  const REVIEW_ROUTES = [
+    { dest: 'shelf',     label: 'Shelf' },
+    { dest: 'bench',     label: 'Bench' },
+    { dest: 'deferred',  label: 'Defer' },
+    { dest: 'someday',   label: 'Someday' },
+    { dest: 'delegate',  label: 'Delegate' },
+    { dest: '__delete__', label: 'Delete', danger: true },
+  ];
+  let reviewSelectMode = false;
+  const reviewSelectedIds = new Set();
+  let reviewDeferMode = null; // null | 'single' | 'batch'
+
   function renderReview() {
     const yours = reviewTasks.filter(t => !isOthersTask(t));
     const others = reviewTasks.filter(t => isOthersTask(t));
-
     renderReviewSection('yours', yours);
     renderReviewSection('others', others);
+    updateReviewBatchBar();
   }
 
   function renderReviewSection(key, tasks) {
     const list = document.getElementById(`review-${key}-list`);
     const count = document.getElementById(`review-${key}-count`);
-    const actions = document.getElementById(`review-${key}-actions`);
-
     count.textContent = tasks.length;
 
     if (tasks.length === 0) {
       list.innerHTML = key === 'yours'
-        ? '<div class="review-empty">Nothing proposed for you right now.</div>'
-        : '<div class="review-empty">No tasks look like someone else\'s.</div>';
-      actions.style.display = 'none';
+        ? '<div class="review-empty">Nothing in your inbox right now.</div>'
+        : '<div class="review-empty">No items look like someone else\'s.</div>';
       return;
     }
-
     list.innerHTML = tasks.map(t => reviewTaskHTML(t)).join('');
-    actions.style.display = 'flex';
   }
 
   function reviewTaskHTML(task) {
@@ -664,109 +669,117 @@ function setTheme(theme) {
       ? `<div class="review-source" title="${escapeHTML(task.source_note)}">from: ${escapeHTML(task.source_note)}</div>`
       : '';
 
+    const checked = reviewSelectedIds.has(task.id) ? ' checked' : '';
+    const routeBtns = REVIEW_ROUTES.map(r =>
+      `<button class="route-btn${r.danger ? ' danger' : ''}" onclick="routeProposal('${task.id}', '${r.dest}')">${r.label}</button>`
+    ).join('');
+
     return `
-      <div class="review-item" data-id="${task.id}">
-        <div class="review-check" onclick="toggleReviewCheck(event, '${task.id}')"></div>
+      <div class="review-item${checked}" data-id="${task.id}">
+        <div class="review-check" onclick="toggleReviewSelection(event, '${task.id}')"></div>
         <div class="review-item-body">
           <div class="review-item-name" onclick="openReviewEditor('${task.id}', event)" title="Click to edit">${escapeHTML(task.name)}</div>
           ${tags.length ? `<div class="review-item-meta">${tags.join('')}</div>` : ''}
           ${source}
+          <div class="route-bar">${routeBtns}</div>
         </div>
       </div>
     `;
   }
 
-  function toggleReviewCheck(event, id) {
+  // Route a single proposal to a destination bucket (or delete).
+  async function routeProposal(id, dest) {
+    if (dest === 'deferred') {
+      reviewDeferMode = 'single';
+      pendingDeferTaskId = id;
+      showDeferModal();
+      return;
+    }
+    await applyReviewRoute([id], dest);
+  }
+
+  // Shared apply: handles delete + status routes for one or many proposals.
+  async function applyReviewRoute(ids, dest) {
+    if (!ids.length) return;
+    const previous = JSON.parse(JSON.stringify(reviewTasks));
+    reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
+    ids.forEach(i => reviewSelectedIds.delete(i));
+    renderReview();
+
+    const label = dest === '__delete__' ? 'Deleted' : `→ ${dest.charAt(0).toUpperCase() + dest.slice(1)}`;
+    showToast(`${ids.length} ${ids.length > 1 ? 'items' : 'item'} ${label}`, {
+      undo: async () => {
+        reviewTasks = previous;
+        renderReview();
+        await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
+        await loadTasks();
+      }
+    });
+
+    try {
+      let error;
+      if (dest === '__delete__') {
+        ({ error } = await sb.from('tasks').delete().in('id', ids));
+      } else {
+        ({ error } = await sb.from('tasks').update({ status: dest }).in('id', ids));
+      }
+      if (error) {
+        reviewTasks = previous;
+        renderReview();
+        showToast(`Error: ${error.message}`, { type: 'error' });
+      } else {
+        await loadTasks();
+      }
+    } catch (e) {
+      reviewTasks = previous;
+      renderReview();
+      showToast(`Error: ${e.message}`, { type: 'error' });
+    }
+  }
+
+  // — Proposals bulk select —
+  function toggleReviewSelectMode() {
+    reviewSelectMode = !reviewSelectMode;
+    reviewSelectedIds.clear();
+    document.body.classList.toggle('review-select-mode', reviewSelectMode);
+    const btn = document.getElementById('review-select-toggle');
+    btn.classList.toggle('active', reviewSelectMode);
+    btn.textContent = reviewSelectMode ? 'Selecting...' : 'Select';
+    renderReview();
+  }
+
+  function toggleReviewSelection(event, id) {
     event.stopPropagation();
+    if (!reviewSelectMode) return; // check dot is inert outside select mode
+    if (reviewSelectedIds.has(id)) reviewSelectedIds.delete(id);
+    else reviewSelectedIds.add(id);
     const item = event.currentTarget.closest('.review-item');
     if (item) item.classList.toggle('checked');
+    updateReviewBatchBar();
   }
 
-  function getReviewCheckedIds(key) {
-    const list = document.getElementById(`review-${key}-list`);
-    return [...list.querySelectorAll('.review-item.checked')].map(el => el.dataset.id);
+  function updateReviewBatchBar() {
+    const bar = document.getElementById('review-batch-bar');
+    const count = document.getElementById('review-batch-count');
+    if (reviewSelectMode && reviewSelectedIds.size > 0) {
+      bar.classList.add('active');
+      count.textContent = `${reviewSelectedIds.size} selected`;
+    } else {
+      bar.classList.remove('active');
+    }
   }
 
-  function getReviewUncheckedIds(key) {
-    const list = document.getElementById(`review-${key}-list`);
-    return [...list.querySelectorAll('.review-item:not(.checked)')].map(el => el.dataset.id);
-  }
-
-  async function reviewAddChecked(key) {
-    const ids = getReviewCheckedIds(key);
-    if (ids.length === 0) {
-      showToast('Nothing checked', { type: 'error' });
+  async function reviewBatchRoute(dest) {
+    const ids = [...reviewSelectedIds];
+    if (!ids.length) return;
+    if (dest === 'deferred') {
+      reviewDeferMode = 'batch';
+      pendingDeferTaskId = '__review_batch__';
+      showDeferModal();
       return;
     }
-
-    // Optimistic: drop these from the local list and re-render
-    const previous = JSON.parse(JSON.stringify(reviewTasks));
-    reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
-    renderReview();
-
-    showToast(`${ids.length} moved to Inbox`, {
-      undo: async () => {
-        reviewTasks = previous;
-        renderReview();
-        await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
-        await loadTasks();
-      }
-    });
-
-    try {
-      const { error } = await sb.from('tasks').update({ status: 'inbox' }).in('id', ids);
-      if (error) {
-        reviewTasks = previous;
-        renderReview();
-        showToast(`Error: ${error.message}`, { type: 'error' });
-      } else {
-        // Refresh the Tasks tab so the promoted rows show up in Inbox
-        // (sorted newest-first, so they land at the top).
-        await loadTasks();
-      }
-    } catch (e) {
-      reviewTasks = previous;
-      renderReview();
-      showToast(`Error: ${e.message}`, { type: 'error' });
-    }
-  }
-
-  async function reviewClearUnchecked(key) {
-    const ids = getReviewUncheckedIds(key);
-    if (ids.length === 0) {
-      showToast('Nothing to clear', { type: 'error' });
-      return;
-    }
-
-    // Dismiss to 'someday' (recoverable, non-destructive).
-    const previous = JSON.parse(JSON.stringify(reviewTasks));
-    reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
-    renderReview();
-
-    showToast(`${ids.length} dismissed`, {
-      undo: async () => {
-        reviewTasks = previous;
-        renderReview();
-        await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
-        await loadTasks();
-      }
-    });
-
-    try {
-      const { error } = await sb.from('tasks').update({ status: 'someday' }).in('id', ids);
-      if (error) {
-        reviewTasks = previous;
-        renderReview();
-        showToast(`Error: ${error.message}`, { type: 'error' });
-      } else {
-        // Keep the Tasks tab in sync (dismissed items land in Someday).
-        await loadTasks();
-      }
-    } catch (e) {
-      reviewTasks = previous;
-      renderReview();
-      showToast(`Error: ${e.message}`, { type: 'error' });
-    }
+    await applyReviewRoute(ids, dest);
+    if (reviewSelectMode) toggleReviewSelectMode();
   }
 
   // Inline editor for review items — reuses the same edit UI shape as tasks.
@@ -941,15 +954,6 @@ function setTheme(theme) {
 
   function renderTasks() {
     const bench = sortByUrgency(getFilteredTasks('bench'));
-    // Inbox: newest-first base order so freshly-promoted Review items land
-    // at the top, then urgency floats overdue/due-soon above the rest.
-    const inbox = sortByUrgency(
-      getFilteredTasks('inbox').sort((a, b) => {
-        const aT = new Date(a.updated_at || a.created_at || 0);
-        const bT = new Date(b.updated_at || b.created_at || 0);
-        return bT - aT;
-      })
-    );
     const shelf = sortByUrgency(getFilteredTasks('shelf'));
     const someday = sortByUrgency(getFilteredTasks('someday'));
     let delegate = sortByUrgency(getFilteredTasks('delegate'));
@@ -976,7 +980,6 @@ function setTheme(theme) {
     }
 
     document.getElementById('bench-tasks').innerHTML = bench.map(t => taskHTML(t)).join('');
-    document.getElementById('inbox-tasks').innerHTML = inbox.map(t => taskHTML(t)).join('');
     document.getElementById('shelf-tasks').innerHTML = shelf.map(t => taskHTML(t)).join('');
     document.getElementById('someday-tasks').innerHTML = someday.map(t => taskHTML(t)).join('');
     document.getElementById('delegate-tasks').innerHTML = delegate.map(t => taskHTML(t)).join('');
@@ -984,7 +987,6 @@ function setTheme(theme) {
     document.getElementById('done-tasks').innerHTML = done.map(t => taskHTML(t, true)).join('');
 
     document.getElementById('bench-count').textContent = bench.length;
-    document.getElementById('inbox-count').textContent = inbox.length;
     document.getElementById('shelf-count').textContent = shelf.length;
     document.getElementById('someday-count').textContent = someday.length;
     document.getElementById('delegate-count').textContent = delegate.length + (delegateTagFilter ? '/' + getFilteredTasks('delegate').length : '');
@@ -1243,6 +1245,27 @@ function setTheme(theme) {
   async function confirmDefer() {
     const deferDate = document.getElementById('defer-date-input').value;
     if (!deferDate) return;
+
+    // Proposals defer (single or bulk) — route out of the inbox to deferred.
+    if (reviewDeferMode) {
+      const ids = reviewDeferMode === 'batch' ? [...reviewSelectedIds] : [pendingDeferTaskId];
+      document.getElementById('defer-modal-overlay').classList.remove('active');
+      pendingDeferTaskId = null;
+      const previous = JSON.parse(JSON.stringify(reviewTasks));
+      reviewTasks = reviewTasks.filter(t => !ids.includes(t.id));
+      ids.forEach(i => reviewSelectedIds.delete(i));
+      const wasBatch = reviewDeferMode === 'batch';
+      reviewDeferMode = null;
+      renderReview();
+      if (wasBatch && reviewSelectMode) toggleReviewSelectMode();
+      try {
+        const { error } = await sb.from('tasks')
+          .update({ status: 'deferred', defer_date: deferDate }).in('id', ids);
+        if (error) { reviewTasks = previous; renderReview(); showToast(`Error: ${error.message}`, { type: 'error' }); }
+        else { showToast(`${ids.length} → Deferred to ${deferDate}`); await loadTasks(); }
+      } catch (e) { reviewTasks = previous; renderReview(); showToast(`Error: ${e.message}`, { type: 'error' }); }
+      return;
+    }
 
     // Batch defer mode
     if (pendingDeferTaskId === '__batch__' && selectedTaskIds.size > 0) {
@@ -2005,6 +2028,187 @@ function setTheme(theme) {
       <div class="coaching-text">"${escapeHTML(item.text)}"</div>
       <div class="coaching-source">— ${escapeHTML(item.source)}</div>
     `;
+  }
+
+  // ─────────────── Email review tab ───────────────
+  let emailItems = [];        // non-terminal queue rows
+  let emailSuggestions = {};  // queue_id -> [{id, text, added, task_id}]
+
+  async function loadEmailQueue() {
+    const list = document.getElementById('email-queue-list');
+    list.innerHTML = '<div class="email-empty">Loading…</div>';
+    try {
+      const { data: rows, error } = await sb.from('email_queue')
+        .select('*')
+        .not('status', 'in', '("done","left")')
+        .order('surfaced_at', { ascending: false });
+      if (error) throw error;
+      emailItems = rows || [];
+
+      emailSuggestions = {};
+      const ids = emailItems.map(r => r.id);
+      if (ids.length) {
+        const { data: sugg } = await sb.from('email_task_suggestions')
+          .select('*').in('queue_id', ids);
+        (sugg || []).forEach(s => {
+          (emailSuggestions[s.queue_id] = emailSuggestions[s.queue_id] || []).push(s);
+        });
+      }
+      renderEmailQueue();
+    } catch (e) {
+      console.error('Error loading email queue:', e);
+      list.innerHTML = `<div class="email-empty">Error loading email queue: ${escapeHTML(e.message)}</div>`;
+    }
+  }
+
+  function renderEmailQueue() {
+    const drafted = emailItems.filter(i => i.status === 'drafted');
+    const needs = emailItems.filter(i => i.status !== 'drafted');
+
+    const draftedSection = document.getElementById('email-drafted-section');
+    const draftedList = document.getElementById('email-drafted-list');
+    document.getElementById('email-drafted-count').textContent = drafted.length;
+    if (drafted.length) {
+      draftedSection.style.display = '';
+      draftedList.innerHTML = drafted.map(emailDraftedHTML).join('');
+    } else {
+      draftedSection.style.display = 'none';
+      draftedList.innerHTML = '';
+    }
+
+    document.getElementById('email-queue-count').textContent = needs.length;
+    const list = document.getElementById('email-queue-list');
+    list.innerHTML = needs.length
+      ? needs.map(emailItemHTML).join('')
+      : '<div class="email-empty">Inbox is clear. Nothing waiting on you.</div>';
+
+    const decided = needs.filter(i => i.disposition).length;
+    document.getElementById('email-pending-note').textContent = decided ? `${decided} decided` : '';
+    document.getElementById('process-now-btn').disabled = decided === 0;
+  }
+
+  function emailItemHTML(item) {
+    const role = item.role ? ` · ${escapeHTML(item.role)}` : '';
+    const chips = [];
+    if (item.tier === 4) chips.push('<span class="email-chip pastoral">🟡 Pastoral</span>');
+    if (item.is_decision) chips.push('<span class="email-chip decision">⚡ Decision</span>');
+    if (item.status === 'processing') chips.push('<span class="email-chip processing">processing…</span>');
+    if (item.status === 'error') chips.push(`<span class="email-chip error" title="${escapeHTML(item.error_msg||'')}">error</span>`);
+
+    const asks = (item.asks && item.asks.length)
+      ? `<ul class="email-asks">${item.asks.map(a => `<li>${escapeHTML(a)}</li>`).join('')}</ul>` : '';
+    const detail = item.summary_detail
+      ? `<details class="email-detail"><summary>More</summary><div class="email-detail-body">${escapeHTML(item.summary_detail)}${asks}</div></details>`
+      : asks;
+
+    const disp = item.disposition || '';
+    const dispBtn = (d, label) =>
+      `<button class="disp-btn${disp===d?' active':''}" onclick="setDisposition('${item.id}','${d}')">${label}</button>`;
+    const noteField = disp === 'draft'
+      ? `<input type="text" class="draft-note" placeholder="Optional one-line steer / decision…" value="${escapeHTML(item.draft_note||'')}" onchange="saveDraftNote('${item.id}', this.value)">`
+      : '';
+
+    const sugg = (emailSuggestions[item.id] || []);
+    const suggHTML = sugg.length ? `<div class="email-suggestions">${sugg.map(s =>
+      s.added
+        ? `<div class="sugg added">✓ added: ${escapeHTML(s.text)}</div>`
+        : `<div class="sugg"><span class="sugg-text">💡 ${escapeHTML(s.text)}</span><span class="sugg-actions"><button class="sugg-add" onclick="addSuggestion('${s.id}','${item.id}')">Add</button><button class="sugg-no" onclick="dismissSuggestion('${s.id}','${item.id}')">No</button></span></div>`
+    ).join('')}</div>` : '';
+
+    const gmailLink = item.thread_id ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(item.thread_id)}` : null;
+    const openLink = gmailLink ? `<a class="email-open" href="${gmailLink}" target="_blank" rel="noopener">open</a>` : '';
+
+    return `
+      <div class="email-item${disp?' decided':''}" data-id="${item.id}">
+        <div class="email-item-head">
+          <span class="email-sender">${escapeHTML(item.sender || item.sender_email || 'Unknown')}${role}</span>
+          ${chips.join('')}
+          ${openLink}
+        </div>
+        <div class="email-subject">${escapeHTML(item.subject || '(no subject)')}</div>
+        <div class="email-summary">${escapeHTML(item.summary_short || '')}</div>
+        ${detail}
+        ${suggHTML}
+        <div class="disp-bar">
+          ${dispBtn('archive','Archive')}
+          ${dispBtn('leave','Leave')}
+          ${dispBtn('draft','Draft reply')}
+        </div>
+        ${noteField}
+      </div>
+    `;
+  }
+
+  function emailDraftedHTML(item) {
+    const gmailLink = item.thread_id ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(item.thread_id)}` : '#';
+    return `
+      <div class="email-item drafted" data-id="${item.id}">
+        <div class="email-item-head">
+          <span class="email-sender">${escapeHTML(item.sender || item.sender_email || 'Unknown')}</span>
+          <a class="email-open" href="${gmailLink}" target="_blank" rel="noopener">open in Gmail →</a>
+        </div>
+        <div class="email-subject">${escapeHTML(item.subject || '(no subject)')}</div>
+        <div class="email-drafted-note">Draft ready — review &amp; send from Gmail. Clears once sent.</div>
+      </div>
+    `;
+  }
+
+  async function setDisposition(id, disp) {
+    const item = emailItems.find(i => i.id === id);
+    if (!item) return;
+    const newDisp = item.disposition === disp ? null : disp;
+    item.disposition = newDisp;
+    item.status = newDisp ? 'decided' : 'pending';
+    renderEmailQueue();
+    try {
+      const { error } = await sb.from('email_queue')
+        .update({ disposition: newDisp, status: item.status, decided_at: newDisp ? new Date().toISOString() : null })
+        .eq('id', id);
+      if (error) showToast(`Error: ${error.message}`, { type: 'error' });
+    } catch (e) { showToast(`Error: ${e.message}`, { type: 'error' }); }
+  }
+
+  async function saveDraftNote(id, val) {
+    const item = emailItems.find(i => i.id === id);
+    if (item) item.draft_note = val;
+    try { await sb.from('email_queue').update({ draft_note: val }).eq('id', id); }
+    catch (e) { showToast(`Error: ${e.message}`, { type: 'error' }); }
+  }
+
+  async function addSuggestion(suggId, queueId) {
+    const arr = emailSuggestions[queueId] || [];
+    const s = arr.find(x => x.id === suggId);
+    if (!s || s.added) return;
+    const item = emailItems.find(i => i.id === queueId);
+    const sourceNote = item ? `email from ${item.sender || item.sender_email} — ${item.subject}` : 'email';
+    try {
+      const { data, error } = await sb.from('tasks')
+        .insert({ name: s.text, status: 'proposed', domain: 'work', source_note: sourceNote, tags: ['email'] })
+        .select('id').single();
+      if (error) throw error;
+      await sb.from('email_task_suggestions').update({ added: true, task_id: data.id }).eq('id', suggId);
+      s.added = true; s.task_id = data.id;
+      renderEmailQueue();
+      showToast('Task added → Proposals');
+    } catch (e) { showToast(`Error: ${e.message}`, { type: 'error' }); }
+  }
+
+  async function dismissSuggestion(suggId, queueId) {
+    try { await sb.from('email_task_suggestions').delete().eq('id', suggId); } catch (e) {}
+    emailSuggestions[queueId] = (emailSuggestions[queueId] || []).filter(s => s.id !== suggId);
+    renderEmailQueue();
+  }
+
+  async function processNow() {
+    const decided = emailItems.filter(i => i.status === 'decided' && i.disposition).length;
+    if (!decided) { showToast('Nothing decided yet', { type: 'error' }); return; }
+    try {
+      const { error } = await sb.from('email_control')
+        .update({ process_ready: true, requested_at: new Date().toISOString() })
+        .eq('id', 1);
+      if (error) throw error;
+      showToast(`Processing ${decided} — drafts will appear in Gmail shortly`);
+    } catch (e) { showToast(`Error: ${e.message}`, { type: 'error' }); }
   }
 
   checkAuth();

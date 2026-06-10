@@ -57,10 +57,9 @@
 
   <div class="tab-nav">
     <button class="tab-btn active" onclick="switchView('tasks')">Tasks</button>
-    <button class="tab-btn" onclick="switchView('people')">People</button>
-    <button class="tab-btn" onclick="switchView('threads')">Threads</button>
     <button class="tab-btn" onclick="switchView('briefing')">Briefing</button>
-    <button class="tab-btn" onclick="switchView('review')">Review</button>
+    <button class="tab-btn" onclick="switchView('review')">Proposals</button>
+    <button class="tab-btn" onclick="switchView('email')">Email</button>
   </div>
   <div class="search-bar" id="search-bar"><input type="text" class="search-input" id="search-input" placeholder="Search tasks..." oninput="handleSearchInput(this.value)" onkeydown="if(event.key==='Escape')hideSearch()"></div>
   <div id="tasks-view" class="view active main">
@@ -72,14 +71,6 @@
             <span class="section-count" id="bench-count">0</span>
           </div>
           <div id="bench-tasks" class="drop-zone" data-pool="bench" data-pool-label="Drop here → Bench" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'bench')"></div>
-        </div>
-
-        <div class="section" id="inbox-section">
-          <div class="section-header">
-            <span class="section-title">📥 Inbox</span>
-            <span class="section-count" id="inbox-count">0</span>
-          </div>
-          <div id="inbox-tasks" class="drop-zone" data-pool="inbox" data-pool-label="Drop here → Inbox" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'inbox')"></div>
         </div>
 
         <div class="section" id="shelf-section">
@@ -142,12 +133,11 @@
         <div class="quick-add">
           <input type="text" id="quick-add-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')handleQuickAdd()">
           <select id="quick-add-pool">
-            <option value="inbox">Inbox</option>
-            <option value="bench">Bench</option>
             <option value="shelf">Shelf</option>
+            <option value="bench">Bench</option>
+            <option value="someday">Someday</option>
             <option value="delegate">Delegate</option>
             <option value="deferred">Deferred</option>
-            <option value="someday">Someday</option>
           </select>
           <button onclick="handleQuickAdd()">Add</button>
         </div>
@@ -184,26 +174,6 @@
     </div>
   </div>
 
-  <div id="people-view" class="view people-view">
-    <div class="people-filters">
-      <select id="people-role-filter" onchange="renderPeople()">
-        <option value="all">All Roles</option>
-        <option value="staff">Staff</option>
-        <option value="lay_leader">Lay Leaders</option>
-        <option value="congregation">Congregation</option>
-        <option value="external">External</option>
-        <option value="family">Family</option>
-        <option value="visitor">Visitor</option>
-      </select>
-    </div>
-    <div id="people-list" class="people-list"></div>
-  </div>
-
-  <div id="threads-view" class="view threads-view">
-    <div id="threads-summary" class="threads-summary"></div>
-    <div id="threads-grid" class="threads-grid"></div>
-  </div>
-
   <div id="briefing-view" class="view briefing-view">
     <div class="briefing-header">
       <div class="briefing-title-wrap">
@@ -219,10 +189,13 @@
 
   <div id="review-view" class="view review-view">
     <div class="review-header">
-      <h2 class="review-title">Review Proposed Tasks</h2>
-      <button class="refresh-btn" onclick="loadReview()" title="Refresh">🔄</button>
+      <h2 class="review-title">Proposals</h2>
+      <div class="review-header-actions">
+        <button class="select-toggle" id="review-select-toggle" onclick="toggleReviewSelectMode()">Select</button>
+        <button class="refresh-btn" onclick="loadReview()" title="Refresh">🔄</button>
+      </div>
     </div>
-    <div class="review-intro">Triage AI-proposed tasks. Check the ones you want, then add them to your Inbox. Clear the rest.</div>
+    <div class="review-intro">Your landing inbox. Route each item to where it belongs — or select several and route them in bulk.</div>
 
     <div class="review-section" id="review-yours-section">
       <div class="review-section-header">
@@ -230,10 +203,6 @@
         <span class="section-count" id="review-yours-count">0</span>
       </div>
       <div id="review-yours-list" class="review-list"></div>
-      <div class="review-action-bar" id="review-yours-actions" style="display:none">
-        <button class="review-add-btn" onclick="reviewAddChecked('yours')">✓ Add checked → Inbox</button>
-        <button class="review-clear-btn" onclick="reviewClearUnchecked('yours')">Clear unchecked</button>
-      </div>
     </div>
 
     <div class="review-section" id="review-others-section">
@@ -242,22 +211,56 @@
         <span class="section-count" id="review-others-count">0</span>
       </div>
       <div id="review-others-list" class="review-list"></div>
-      <div class="review-action-bar" id="review-others-actions" style="display:none">
-        <button class="review-add-btn" onclick="reviewAddChecked('others')">✓ Add checked (mine) → Inbox</button>
-        <button class="review-clear-btn" onclick="reviewClearUnchecked('others')">Clear the rest</button>
+    </div>
+  </div>
+
+  <div id="email-view" class="view email-view">
+    <div class="email-header">
+      <h2 class="email-title">Email</h2>
+      <div class="email-header-actions">
+        <span class="email-pending-note" id="email-pending-note"></span>
+        <button class="process-now-btn" id="process-now-btn" onclick="processNow()">Process now</button>
+        <button class="refresh-btn" onclick="loadEmailQueue()" title="Refresh">🔄</button>
       </div>
+    </div>
+    <div class="email-intro">Set an action per email (and add any tasks). Nothing happens until you hit <strong>Process now</strong>.</div>
+
+    <div class="email-section" id="email-drafted-section" style="display:none">
+      <div class="email-section-header">
+        <span class="email-section-title">✉️ Drafted — send in Gmail</span>
+        <span class="section-count" id="email-drafted-count">0</span>
+      </div>
+      <div id="email-drafted-list" class="email-list"></div>
+    </div>
+
+    <div class="email-section" id="email-queue-section">
+      <div class="email-section-header">
+        <span class="email-section-title">📨 Needs you</span>
+        <span class="section-count" id="email-queue-count">0</span>
+      </div>
+      <div id="email-queue-list" class="email-list"></div>
     </div>
   </div>
 </div>
 
+<div class="batch-bar" id="review-batch-bar">
+  <span class="batch-count" id="review-batch-count">0 selected</span>
+  <button onclick="reviewBatchRoute('shelf')">→ Shelf</button>
+  <button onclick="reviewBatchRoute('bench')">→ Bench</button>
+  <button onclick="reviewBatchRoute('deferred')">→ Deferred</button>
+  <button onclick="reviewBatchRoute('someday')">→ Someday</button>
+  <button onclick="reviewBatchRoute('delegate')">→ Delegate</button>
+  <button class="batch-done" onclick="reviewBatchRoute('__delete__')">Delete</button>
+  <button class="batch-cancel" onclick="toggleReviewSelectMode()">Cancel</button>
+</div>
+
 <div class="batch-bar" id="batch-bar">
   <span class="batch-count" id="batch-count">0 selected</span>
-  <button onclick="batchMove('bench')">→ Bench</button>
-  <button onclick="batchMove('inbox')">→ Inbox</button>
   <button onclick="batchMove('shelf')">→ Shelf</button>
-  <button onclick="batchMove('delegate')">→ Delegate</button>
+  <button onclick="batchMove('bench')">→ Bench</button>
   <button onclick="batchMove('deferred')">→ Deferred</button>
   <button onclick="batchMove('someday')">→ Someday</button>
+  <button onclick="batchMove('delegate')">→ Delegate</button>
   <button class="batch-done" onclick="batchMove('done')">Done</button>
   <button class="batch-cancel" onclick="toggleSelectMode()">Cancel</button>
 </div>
@@ -287,10 +290,9 @@
   <div class="shortcut-row"><span>New task</span><span class="kbd-hint">n</span></div>
   <div class="shortcut-row"><span>Search tasks</span><span class="kbd-hint">/</span></div>
   <div class="shortcut-row"><span>Tasks tab</span><span class="kbd-hint">1</span></div>
-  <div class="shortcut-row"><span>People tab</span><span class="kbd-hint">2</span></div>
-  <div class="shortcut-row"><span>Threads tab</span><span class="kbd-hint">3</span></div>
-  <div class="shortcut-row"><span>Briefing tab</span><span class="kbd-hint">4</span></div>
-  <div class="shortcut-row"><span>Review tab</span><span class="kbd-hint">5</span></div>
+  <div class="shortcut-row"><span>Briefing tab</span><span class="kbd-hint">2</span></div>
+  <div class="shortcut-row"><span>Proposals tab</span><span class="kbd-hint">3</span></div>
+  <div class="shortcut-row"><span>Email tab</span><span class="kbd-hint">4</span></div>
   <div class="shortcut-row"><span>Close / Cancel</span><span class="kbd-hint">Esc</span></div>
   <div class="shortcut-row"><span>Show this help</span><span class="kbd-hint">?</span></div>
 </div>
