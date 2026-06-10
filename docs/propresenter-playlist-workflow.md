@@ -276,6 +276,28 @@ Delivered bundle: `June 14 v2.proplaylist`.
 
 ### ▶ Milestone 2 — Assemble the manifest from the spreadsheet (IN PROGRESS)
 
+### 🏗️ Milestone 2 — ARCHITECTURE DECIDED (template-swap)
+Per the user:
+- **Two base template playlists**: **Standard** and **Communion**. Communion = the **first
+  Sunday of the month**; the generator picks the template by date.
+- **Swap every week** (everything else stays fixed from the template):
+  1. **Call to Worship** — generate fresh from the linked CTW Drive doc (Milestone 1, done).
+  2. **Hymns/songs** — match spreadsheet hymn number/title -> `Libraries/Hymns & Songs/*.pro`.
+  3. **People lower-thirds** — liturgist, preacher, children's sermon, community prayer, etc.
+     -> `Libraries/Name Lower Thirds/L3 - NAME.pro`.
+- **Do NOT** generate the sermon title slide or sermon deck (user handles the sermon).
+
+**Matcher DONE + verified** (`tools/propresenter/match_library.py`), tested on the real
+June 14 row: "UMH 519..." -> `519 - Lift Every Voice.pro`, "TFWS #2172..." ->
+`2172 - We Are Called.pro`, "Gabe Meadows" -> `L3 - Gabe Meadows & Band.pro`,
+"Jonathan" -> `L3 - JONATHAN PERRY.pro`, etc. Low-confidence matches should be surfaced
+for review, not silently guessed.
+
+**NEXT INPUT NEEDED:** the two real template playlists (export "Standard" and "Communion"
+as `.proplaylist`). Then define how each swap-slot is identified within the template
+(by its group header / item role) so the generator knows which item to replace.
+
+
 **Manifest structure decoded** (the `data` protobuf):
 - Playlist node at `root.fn3.fn12.fn1` = { `fn1` uuid, `fn2` display name, `fn13` children }.
 - `fn13.msg` = ordered list of `fn=1` items. Three item types:
