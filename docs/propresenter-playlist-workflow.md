@@ -337,3 +337,43 @@ zip. Requires decoding the manifest's group/item structure well enough to constr
 - Presentation builder: https://github.com/cgarwood/propresenter-presentation-builder
 - Official API docs: https://jeffmikels.github.io/ProPresenter-API/Pro7/
 - PP7 User Guide (PDF): https://files.renewedvision.com/propresenter/support/Pro7UserGuide.pdf
+
+---
+
+## 8. SLOT-MATCHING SPEC (both templates decoded)
+
+Both `Standard Worship Service` and `Worship Service With Communion` share one ordered
+backbone. Items are either **cue headers** (production notes, no `.pro` ref) or
+**presentation items** (carry a `Libraries/...pro` ref). Swap slots are identified by the
+**library category of the ref** (+ the cue header that precedes them), so the generator
+never hard-codes positions.
+
+### 8.1 Item classification rule
+| Ref category / name | Treatment |
+|---|---|
+| `CALL TO WORSHIP-2.pro` (Name Lower Thirds) | **CTW slot** — regenerate content weekly (Milestone 1 generator) |
+| `Libraries/Hymns & Songs/####.pro` | **Song slot** — swap to matched library file |
+| `Name Lower Thirds/L3 - <Proper Name>.pro` | **Person slot** — swap to matched `L3 - NAME.pro` |
+| `Name Lower Thirds/L3 - <ALL-CAPS ROLE>.pro` (WORSHIP GUIDE, GO IN PEACE, WORSHIP APP CHECK IN, Children's Time, Song Title) | **FIXED** — generic role label, keep as-is |
+| Sermon Slides, Worship Blank, Web *, AUMC PrePost, Generosity, Invitation-1, Communion, Lord's Prayer, Baptismal Liturgy | **FIXED** — template owns these |
+
+### 8.2 Swap slots found in each template (in service order)
+| # | Slot | Standard | Communion | Source column (weekly) |
+|---|---|---|---|---|
+| 1 | Welcome / preacher person | `L3 - JONATHAN PERRY` | `L3 - JONATHAN PERRY` | ? (preacher) |
+| 2 | Musician person | `L3 - GUEST - PIANO` | `L3 - Ashton Landry` | ? (accompanist) |
+| 3 | **Call to Worship** | `CALL TO WORSHIP-2` | `CALL TO WORSHIP-2` | CTW Drive doc |
+| 4 | Opening hymn (after "Hymn #1" cue) | `3149 - Place At The Table` | `3179 - The Risen Christ` | Opening Hymn |
+| 5 | Performance/special song | `L3 - Song Title` region | — | Special Music |
+| 6 | Invitation / liturgist person | `L3 - JENNY BATES` | `L3 - CATHY` | ? (liturgist) |
+| 7 | Closing hymn (before benediction) | `3154 - Draw The Circle Wide` | `672 - God Be With You` | Closing Hymn |
+
+Matcher (`match_library.py`) already resolves the song & person values correctly.
+
+### 8.3 OPEN QUESTIONS (need user input before wiring)
+1. **Song count vs slots.** Templates have **2 fixed hymn slots** (opening + closing) plus a
+   performance-song area. A real week (June 14) had **3 songs** (519, 2172, 3004). Need the
+   rule: which spreadsheet song → which slot, and whether song *count* varies (→ add/remove
+   slots) or is always a fixed set.
+2. **People role → slot mapping.** Which spreadsheet column fills each person slot
+   (preacher → JONATHAN PERRY, accompanist → GUEST-PIANO/Ashton, liturgist → JENNY BATES/CATHY)?
