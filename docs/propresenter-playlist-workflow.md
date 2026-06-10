@@ -365,23 +365,27 @@ never hard-codes positions.
 | `Name Lower Thirds/L3 - <ALL-CAPS ROLE>.pro` (WORSHIP GUIDE, GO IN PEACE, WORSHIP APP CHECK IN, Children's Time, Song Title) | **FIXED** — generic role label, keep as-is |
 | Sermon Slides, Worship Blank, Web *, AUMC PrePost, Generosity, Invitation-1, Communion, Lord's Prayer, Baptismal Liturgy | **FIXED** — template owns these |
 
-### 8.2 Swap slots found in each template (in service order)
-| # | Slot | Standard | Communion | Source column (weekly) |
+### 8.2 Swap slots — VERIFIED against both templates (via `tools/propresenter/slot_map.py`)
+Each swap slot is anchored by the **cue header it sits under** (robust to reordering). Both
+templates contain exactly these 6 swap slots; everything else is fixed.
+| Slot | Anchor cue | Standard | Communion | Weekly source (TBD column) |
 |---|---|---|---|---|
-| 1 | Welcome / preacher person | `L3 - JONATHAN PERRY` | `L3 - JONATHAN PERRY` | ? (preacher) |
-| 2 | Musician person | `L3 - GUEST - PIANO` | `L3 - Ashton Landry` | ? (accompanist) |
-| 3 | **Call to Worship** | `CALL TO WORSHIP-2` | `CALL TO WORSHIP-2` | CTW Drive doc |
-| 4 | Opening hymn (after "Hymn #1" cue) | `3149 - Place At The Table` | `3179 - The Risen Christ` | Opening Hymn |
-| 5 | Performance/special song | `L3 - Song Title` region | — | Special Music |
-| 6 | Invitation / liturgist person | `L3 - JENNY BATES` | `L3 - CATHY` | ? (liturgist) |
-| 7 | Closing hymn (before benediction) | `3154 - Draw The Circle Wide` | `672 - God Be With You` | Closing Hymn |
+| **A** person | "In-Person Welcome" | `L3 - JONATHAN PERRY` | `L3 - JONATHAN PERRY` | welcome person (pastor?) |
+| **B** person | "Prelude & Call To Worship" | `L3 - GUEST - PIANO` | `L3 - Ashton Landry` | accompanist/musician |
+| **C** CTW | (same section) | `CALL TO WORSHIP-2` | `CALL TO WORSHIP-2` | CTW Drive doc |
+| **D** song | "Hymn #1" | `3149 - Place At The Table` | `3179 - The Risen Christ` | opening hymn |
+| **E** person | "Invitation" | `L3 - JENNY BATES` | `L3 - CATHY` | liturgist/invitation |
+| **F** song | "Hymn #2" | `3154 - Draw The Circle Wide` | `672 - God Be With You` | closing hymn |
 
-Matcher (`match_library.py`) already resolves the song & person values correctly.
+**Song-count resolved:** templates have **only 2 hymn-file slots** (D, F). The "Performance
+Song" section holds just an `L3 - Song Title` title-card (no song deck) — so special music is
+a *title-card* swap, not a third hymn slot. Matcher (`match_library.py`) resolves the song &
+person values; classifier (`slot_map.py`) tags each item swap/fixed/cue.
 
 ### 8.3 OPEN QUESTIONS (need user input before wiring)
-1. **Song count vs slots.** Templates have **2 fixed hymn slots** (opening + closing) plus a
-   performance-song area, but the number of songs in a real service may differ. Need the
-   rule from actual data: which song → which slot, and whether song *count* varies
+1. **Person role → column mapping.** Slots A/B/E are role-by-position; user to map each
+   weekly-input field to A (welcome), B (accompanist), E (liturgist). ("Let me map columns
+   first.")
    (→ add/remove slots) or is always a fixed set. (No real per-week song list sourced yet.)
 2. **People role → slot mapping.** Which spreadsheet column fills each person slot
    (preacher → JONATHAN PERRY, accompanist → GUEST-PIANO/Ashton, liturgist → JENNY BATES/CATHY)?
