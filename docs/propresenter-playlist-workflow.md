@@ -217,6 +217,21 @@ Paths stay relative (`Libraries/...`) so the bundle is portable between the home
 
 **Dependency:** matching relies on the Drive mirror of the library staying reasonably current.
 
+### 8.4 Generator content rules (what to build vs. placeholder vs. skip)
+User-specified handling for each element type:
+- **Hook (video):** when the Hook/Visual column is a video, insert a **labeled placeholder
+  slide** only (e.g. "HOOK VIDEO — add later"). Do NOT source or embed the video; the user
+  adds the actual media afterward.
+- **Sermon slides:** **do NOT generate.** The user builds the sermon deck themselves and adds
+  it on Sunday. The generator leaves at most a placeholder/section marker so the service order
+  stays intact. (The `Sermon Slides` library folder is therefore not auto-pulled.)
+- **Musical items (Prelude, Special Music/Anthem, Postlude):** reference the performer's
+  existing `L3 - <Name>.pro` lower-third if present, but do NOT generate lyric/content slides —
+  these are live performances.
+- **Generate new content only for:** the weekly **Call to Worship** (from the linked Drive
+  doc) and any other genuinely new text element with no library match. Everything else is
+  reference-an-existing-file assembly.
+
 ---
 
 ## Sources
