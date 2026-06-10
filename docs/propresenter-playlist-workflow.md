@@ -3,10 +3,10 @@
 > Goal: Build worship-service ProPresenter playlists **at home** and load them on the
 > **church computer**. Both machines run **ProPresenter 7**.
 >
-> Status: **Research complete, paused before implementation.** Pick up using the
-> "When We Resume" checklist at the bottom.
+> Status: **Format reverse-engineered from a real church playlist.** Ready to prototype
+> the generator. See Section 7 for the decoded format.
 >
-> Last updated: 2026-06-04
+> Last updated: 2026-06-10
 
 ---
 
@@ -108,6 +108,63 @@ format" → then scale to the full service playlist.
 
 With those three, Claude can scaffold the generator and validate via a single home-machine
 test-import before trusting it for a live service.
+
+---
+
+## 7. DECODED FORMAT (from a real church playlist export)
+
+We analyzed an actual exported playlist (`June_14.proplaylist`, the "Standard Worship
+Service"). This confirms exactly how the church's files are built. **This is the spec the
+generator targets.**
+
+### 7.1 `.proplaylist` container
+- A **ZIP64 archive, stored (no compression)**. Note: ProPresenter writes a non-standard
+  central directory — stock `unzip`/Python `zipfile` choke on it ("overlapped components" /
+  "corrupt zip64"). Extract by **scanning local file headers** (`PK\x03\x04`) and reading
+  ZIP64 sizes from each entry's extra field (id `0x0001`). A working extractor exists in the
+  session history; re-create it if needed.
+- Contents: **one `.pro` file per presentation** referenced in the service, **plus a `data`
+  manifest** (the playlist itself).
+
+### 7.2 `data` manifest (the playlist)
+- Protobuf. Encodes an **ordered list of groups and items**:
+  - **Group headers double as production notes/cues**, e.g.
+    `"Hymn #1 - REMINDER: CLICK TO NEXT SLIDE ON FIRST LETTER OF LAST WORD"`,
+    `"Children's Time - PUT EACH SLIDE UP FOR ABOUT 15 SECONDS"`,
+    `"Prelude & Call To Worship"`.
+  - Each **item** carries: a UUID, a display name, and a reference to its `.pro` by both a
+    relative library path and an absolute `file:///Users/avmac/Documents/ProPresenter/...`
+    URL. ⚠️ The church machine's user is **`avmac`** — absolute paths are machine-specific;
+    rely on the relative `Libraries/...` paths when generating.
+- **Library folders in use:** `Hymns & Songs`, `Name Lower Thirds`, `Worship Service Setup`,
+  `Slideshows`. (Lower-thirds `L3 - …` files are reused every week.)
+
+### 7.3 `.pro` presentation
+- Protobuf wrapping slides. Each text element's content is stored as **RTF** (not plain text).
+  - Styling lives in the RTF: `\qc` (center), `\fsNN` (size in **half-points** — `\fs110` =
+    55pt), bold via font `Helvetica-Bold`, white text. Fonts seen: Helvetica / Helvetica
+    Neue / Times.
+  - RTF escapes to handle: `\'92` = curly apostrophe, `\'97` = em dash, `\'a0` = non-breaking
+    space.
+
+### 7.4 The Call to Worship "typical format" (decoded sample)
+A responsive reading. Structure observed:
+- **Title slide:** `Call To Worship` / subtitle `Led By VBS Students` (~55pt, bold, centered).
+- **Reading slides** (~65–70pt, centered) alternating **`Leaders:`** and **`All:`** parts,
+  with the congregation's `All:` response often emphasized. The liturgy is split across
+  several slides (one thought per slide), with a Scripture verse slide
+  (e.g. *Philippians 4:13*) called out for a unison reading.
+
+### 7.5 Recommended implementation strategy → **template-and-replace**
+Rather than build `.pro` files from scratch via the raw protobuf schema (flexible but
+higher corruption risk), **clone the church's real `.pro` files as templates and swap the
+RTF text per slide**, then reassemble the `.proplaylist` ZIP. This preserves their exact
+theme/fonts/layout and is the lowest-risk path. The greyshirtguy proto schema stays as a
+fallback for structural edits the template approach can't reach.
+
+**Open question for next session:** how will weekly liturgy be supplied to the generator?
+(e.g. a plain-text file with `Leader:` / `All:` markers, a Word doc, a Google Doc, a
+spreadsheet.) That choice drives the input parser.
 
 ---
 
