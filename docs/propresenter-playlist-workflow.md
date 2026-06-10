@@ -275,6 +275,30 @@ What was proven:
 Delivered bundle: `June 14 v2.proplaylist`.
 
 ### ▶ Milestone 2 — Assemble the manifest from the spreadsheet (IN PROGRESS)
+
+**Manifest structure decoded** (the `data` protobuf):
+- Playlist node at `root.fn3.fn12.fn1` = { `fn1` uuid, `fn2` display name, `fn13` children }.
+- `fn13.msg` = ordered list of `fn=1` items. Three item types:
+  - **GROUP** (section header / production cue): `fn1` uuid, `fn2` name, `fn3` marker.
+  - **PRES** (presentation): `fn1` uuid, `fn2` name, `fn4` reference holding the
+    `Libraries/<cat>/<file>.pro` relative path (twice) + a `file://` absolute URL.
+  - **VIDEO**: `fn1` uuid, `fn2` name, `fn5` media element (mp4 path, codec, etc.).
+
+**Builder DONE + verified** (`tools/propresenter/build_manifest.py`):
+- `pb.clone` / `pb.mark_all_dirty` added to the codec; rebuilding `fn13` from clones is
+  byte-identical to the original (proves faithful (de)construction).
+- `build(template_data, playlist_name, spec)` assembles a manifest from a spec list of
+  GROUP/PRES items: clones templates, assigns fresh unique UUIDs, sets names + library
+  paths + home `file://` URLs. Output parses cleanly; UUIDs verified unique.
+- Gotcha fixed: editing a nested leaf requires marking the whole item subtree dirty
+  (`mark_all_dirty`), else the re-encoder emits the template\'s old nested bytes.
+
+**Remaining for a fully importable spreadsheet-driven bundle:**
+1. Map spreadsheet row -> ordered spec; fuzzy-match items to `Libraries/*.pro`
+   (e.g. "UMH 519" -> `519 - Lift Every Voice.pro`).
+2. Fetch the matched `.pro` files (Drive mirror) into the zip.
+3. Insert hook-video + sermon placeholders per section 8.4.
+4. OPEN DESIGN CHOICE: template-swap vs spreadsheet-skeleton (see below).
 Next: stop reusing an existing `data` manifest and instead **build the playlist from the
 spreadsheet row**: parse service order → fuzzy-match each item to a `Libraries/*.pro` →
 insert hook-video + sermon placeholders (per §8.4) → construct the `data` manifest in order →
