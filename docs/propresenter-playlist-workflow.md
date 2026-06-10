@@ -215,12 +215,19 @@ full inventory is readable via the Drive connector. Category folders:
   **Slideshows** (AUMC PrePost Slides, Web Slides Out).
 - Plus a `LibraryData` index file.
 
-### 8.3 Reuse-first strategy (confirmed against June 14)
-**Most of a service already exists as files — reference, don't recreate.** For June 14, every
-hymn, lower-third, and setup slide matched an existing library file (e.g. Opening Hymn
-"UMH 519" → `Hymns & Songs/519 - Lift Every Voice.pro`; Liturgist Gabe Meadows →
-`L3 - Gabe Meadows & Band.pro`). The ONLY new content was the Call to Worship liturgy and the
-sermon title slide.
+### 8.3 Reuse-first strategy
+**Most of a service already exists as files — reference, don't recreate.** A typical service's
+hymns, lower-thirds, and setup slides each correspond to an existing library file, so the
+generator references them. The genuinely new content each week is the Call to Worship liturgy
+(generated from the linked CTW doc); the sermon is owned by the user.
+
+> ⚠️ **Provenance note (corrected 2026-06-10):** earlier drafts of this brief cited a
+> "confirmed June 14 row" with specific values (`UMH 519 Lift Every Voice`, `TFWS 2172 We
+> Are Called`, `W&S 3004 Step By Step`, liturgist "Gabe Meadows"). **Those were synthetic
+> test fixtures, not real data** — no order-of-service spreadsheet containing them exists in
+> Drive. The only verified June 14 artifact is the CTW doc *"Today, I Learned (Juneteenth)."*
+> The matcher logic is validated on example inputs only. **The real weekly-input source is
+> still TBD** (see 8.5).
 
 So the generator pipeline is:
 1. Read spreadsheet row for the target date → order of service + names/hymns.
@@ -287,11 +294,12 @@ Per the user:
      -> `Libraries/Name Lower Thirds/L3 - NAME.pro`.
 - **Do NOT** generate the sermon title slide or sermon deck (user handles the sermon).
 
-**Matcher DONE + verified** (`tools/propresenter/match_library.py`), tested on the real
-June 14 row: "UMH 519..." -> `519 - Lift Every Voice.pro`, "TFWS #2172..." ->
-`2172 - We Are Called.pro`, "Gabe Meadows" -> `L3 - Gabe Meadows & Band.pro`,
-"Jonathan" -> `L3 - JONATHAN PERRY.pro`, etc. Low-confidence matches should be surfaced
-for review, not silently guessed.
+**Matcher DONE** (`tools/propresenter/match_library.py`), validated on **example inputs**
+(NOT a real service row — see provenance note in 8.3): "UMH 519..." -> `519 - Lift Every
+Voice.pro`, "TFWS #2172..." -> `2172 - We Are Called.pro`, name -> `L3 - NAME.pro`, etc.
+Logic resolves hymn number→file and name→L3 against the live library inventory; once a real
+weekly-input source exists, re-validate against an actual row. Low-confidence matches should
+be surfaced for review, not silently guessed.
 
 **NEXT INPUT NEEDED:** the two real template playlists (export "Standard" and "Communion"
 as `.proplaylist`). Then define how each swap-slot is identified within the template
@@ -372,8 +380,16 @@ Matcher (`match_library.py`) already resolves the song & person values correctly
 
 ### 8.3 OPEN QUESTIONS (need user input before wiring)
 1. **Song count vs slots.** Templates have **2 fixed hymn slots** (opening + closing) plus a
-   performance-song area. A real week (June 14) had **3 songs** (519, 2172, 3004). Need the
-   rule: which spreadsheet song → which slot, and whether song *count* varies (→ add/remove
-   slots) or is always a fixed set.
+   performance-song area, but the number of songs in a real service may differ. Need the
+   rule from actual data: which song → which slot, and whether song *count* varies
+   (→ add/remove slots) or is always a fixed set. (No real per-week song list sourced yet.)
 2. **People role → slot mapping.** Which spreadsheet column fills each person slot
    (preacher → JONATHAN PERRY, accompanist → GUEST-PIANO/Ashton, liturgist → JENNY BATES/CATHY)?
+
+### 8.5 Weekly-input source — TBD (open)
+The generator needs a real, structured weekly input (order of service: hymns by number,
+people by role, special music) to drive the swaps. **No such spreadsheet/source has been
+located in Drive** — only per-week CTW Google Docs (e.g. "Today, I Learned (Juneteenth)")
+and sermon-graphics folders exist under the worship-planning tree. Resolve before wiring:
+where does the weekly order of service actually live (a planning spreadsheet, Planning
+Center, a doc template, or to be created)?
