@@ -168,6 +168,57 @@ spreadsheet.) That choice drives the input parser.
 
 ---
 
+## 8. THE LIBRARY (pre-built reusable pieces) + the data pipeline
+
+We confirmed the full source pipeline. Three connected sources:
+
+### 8.1 Planning spreadsheet — "AUMC Worship Service Schedule"
+- Google Sheet ID `16-r_WbF7S5Nbz9zj4GTiatqe0OGAGgVp6W1nAHdBvtE`, tabs by year (2017–2026).
+- One row per Sunday. Column map (from the worship-planning skill's key file):
+  A/0 Point Person · B/1 Date · D/3 Sermon Series · H/7 Staff Out · I/8 Welcome ·
+  K/10 Prelude · **M/12 Liturgist** · **N/13 Call to Worship** · O/14 Hymn Leader ·
+  P/15 Opening Hymn · Q/16 Children's Sermon · T/19 Special Music · U/20 Scripture ·
+  W/22 Preacher · X/23 Sermon Title · **Y/24 Community Prayer** · AB/27 Communion ·
+  AC/28 Invitation · AD/29 Generosity · AE/30 Closing Hymn · AF/31 Benediction ·
+  AG/32 Postlude.
+- The `Call to Worship` cell holds a reference (e.g. `CTW 06/14`) that points to a Google
+  Doc in Drive containing the actual responsive-reading liturgy text. Resolve doc → text.
+- ⚠️ Point Person (col A) ≠ Liturgist (col M). Col L is blank.
+
+### 8.2 ProPresenter library — MIRRORED ON GOOGLE DRIVE
+The church's `~/Documents/ProPresenter/Libraries` is backed up to Drive under
+**"ProPresenter Files / Libraries"** (folder id `1zK9MxOrGdaFWZYy40cr7O5ouzBfvmfYi`), so the
+full inventory is readable via the Drive connector. Category folders:
+- **Hymns & Songs** (~200 `.pro`) — numbered UMH/TFWS/W&S hymns + named songs.
+- **Name Lower Thirds** (~154 `.pro`) — `L3 - [Name]` for people + utility L3s
+  (Scripture Reading, Song Title, Children's Time, Memorial, etc.).
+- **Worship Service Setup** (Welcome, Generosity, Invitation, Worship Blank, Children's
+  Pickup, Web Divide), **Prayer & Communion**, **Calls to Worship**, **Sermon Slides**,
+  **Slideshows** (AUMC PrePost Slides, Web Slides Out).
+- Plus a `LibraryData` index file.
+
+### 8.3 Reuse-first strategy (confirmed against June 14)
+**Most of a service already exists as files — reference, don't recreate.** For June 14, every
+hymn, lower-third, and setup slide matched an existing library file (e.g. Opening Hymn
+"UMH 519" → `Hymns & Songs/519 - Lift Every Voice.pro`; Liturgist Gabe Meadows →
+`L3 - Gabe Meadows & Band.pro`). The ONLY new content was the Call to Worship liturgy and the
+sermon title slide.
+
+So the generator pipeline is:
+1. Read spreadsheet row for the target date → order of service + names/hymns.
+2. Fuzzy-match each item to an existing `Libraries/<category>/<file>.pro` (e.g. "UMH 519",
+   "TFWS #2172", person names → `L3 - NAME.pro`).
+3. Generate ONLY the genuinely new pieces (Call to Worship from the linked doc; sermon title)
+   via the template-and-replace approach (Section 7.5).
+4. Assemble the `data` manifest in service order, zip into a `.proplaylist` (ZIP64/stored).
+
+Paths stay relative (`Libraries/...`) so the bundle is portable between the home machine
+(`/Users/jonathan/...`) and church machine (`/Users/avmac/...`).
+
+**Dependency:** matching relies on the Drive mirror of the library staying reasonably current.
+
+---
+
 ## Sources
 - Working with Files — Renewed Vision: https://learn.renewedvision.com/propresenter/working-with-files
 - Syncing Between Computers: https://support.renewedvision.com/hc/en-us/articles/360041588774-Syncing-Between-Computers-with-ProPresenter
