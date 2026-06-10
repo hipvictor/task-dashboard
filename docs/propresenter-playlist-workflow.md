@@ -221,13 +221,14 @@ hymns, lower-thirds, and setup slides each correspond to an existing library fil
 generator references them. The genuinely new content each week is the Call to Worship liturgy
 (generated from the linked CTW doc); the sermon is owned by the user.
 
-> ⚠️ **Provenance note (corrected 2026-06-10):** earlier drafts of this brief cited a
-> "confirmed June 14 row" with specific values (`UMH 519 Lift Every Voice`, `TFWS 2172 We
-> Are Called`, `W&S 3004 Step By Step`, liturgist "Gabe Meadows"). **Those were synthetic
-> test fixtures, not real data** — no order-of-service spreadsheet containing them exists in
-> Drive. The only verified June 14 artifact is the CTW doc *"Today, I Learned (Juneteenth)."*
-> The matcher logic is validated on example inputs only. **The real weekly-input source is
-> still TBD** (see 8.5).
+> ⚠️ **Provenance note (re-corrected 2026-06-10):** these June 14 values are **REAL**, read
+> column-by-column from the AUMC Worship Service Schedule sheet (§8.5): Liturgist **Gabe
+> Meadows** (col M), Opening Hymn **"UMH 519, Lift Every Voice and Sing"** (col P), Closing
+> Hymn **"TFWS #2172 We Are Called"** (col AE). An intermediate draft wrongly labeled them
+> "fabricated" — that was an over-correction after context loss dropped the provenance link.
+> The one genuine error: **W&S 3004 "Step By Step" is June 7's closing hymn, not June 14's**,
+> so the earlier "June 14 had 3 songs" conflated two adjacent weeks. June 14 has 2 hymns
+> (519 opening, 2172 closing); special music that week is the anthem "The Road Home."
 
 So the generator pipeline is:
 1. Read spreadsheet row for the target date → order of service + names/hymns.
@@ -382,18 +383,35 @@ Song" section holds just an `L3 - Song Title` title-card (no song deck) — so s
 a *title-card* swap, not a third hymn slot. Matcher (`match_library.py`) resolves the song &
 person values; classifier (`slot_map.py`) tags each item swap/fixed/cue.
 
-### 8.3 OPEN QUESTIONS (need user input before wiring)
-1. **Person role → column mapping.** Slots A/B/E are role-by-position; user to map each
-   weekly-input field to A (welcome), B (accompanist), E (liturgist). ("Let me map columns
-   first.")
-   (→ add/remove slots) or is always a fixed set. (No real per-week song list sourced yet.)
-2. **People role → slot mapping.** Which spreadsheet column fills each person slot
-   (preacher → JONATHAN PERRY, accompanist → GUEST-PIANO/Ashton, liturgist → JENNY BATES/CATHY)?
+### 8.3 Slot → spreadsheet-column mapping — VERIFIED against 4 real weeks
+Each swap slot now maps to a confirmed column. Confirmations come from exact template↔sheet
+matches: May 3 (a Communion week) Prelude = "Ashton Landry" = Communion template's
+`L3 - Ashton Landry`; May 3 Invitation = "cathy" = `L3 - CATHY`; Welcome = "Jonathan" =
+`L3 - JONATHAN PERRY`.
+| Slot | Source column | Idx | June 14 value |
+|---|---|---|---|
+| **A** person (welcome) | I · Welcome | 8 | Jonathan |
+| **B** person (accompanist) | K · Prelude | 10 | Jack Knagg ~ Wade in the Water |
+| **C** CTW | N · Call to Worship (+ linked CTW doc) | 13 | CTW 06/14 |
+| **D** opening hymn | P · Opening Hymn | 15 | UMH 519, Lift Every Voice and Sing |
+| **E** person (invitation) | AC · Invitation | 28 | Aaron |
+| **F** closing hymn | AE · Closing Hymn | 30 | TFWS #2172 We Are Called |
+| title-card special music | T · Special Music/Anthem | 19 | The Road Home by Stephen Paulus |
 
-### 8.5 Weekly-input source — TBD (open)
-The generator needs a real, structured weekly input (order of service: hymns by number,
-people by role, special music) to drive the swaps. **No such spreadsheet/source has been
-located in Drive** — only per-week CTW Google Docs (e.g. "Today, I Learned (Juneteenth)")
-and sermon-graphics folders exist under the worship-planning tree. Resolve before wiring:
-where does the weekly order of service actually live (a planning spreadsheet, Planning
-Center, a doc template, or to be created)?
+**Edge cases seen in real data (need handling rules):**
+- **Hymn cell formats vary**: `UMH 519, …`, `TFWS #2172 …`, `W&S 3004 …`, `#451 …`,
+  `…, UMH 672`. Matcher's "first 2–4-digit number" heuristic covers all of these.
+- **Non-hymn entries**: VBS Sunday (June 7) Opening Hymn = "Philippians Four Thirteen/VBS
+  Kids" — no library match. Special weeks must fall back to human review / skip.
+- **Special music is usually an anthem/choir piece** ("The Road Home", "You Do Not Walk
+  Alone/Choir"), not a congregational deck → title-card text only, confirming slot is a card.
+- **Empty source cell** (May 3 Welcome blank): rule needed — keep template default or drop
+  the L3.
+
+### 8.5 Weekly-input source — IDENTIFIED ✓
+**AUMC Worship Service Schedule** Google Sheet (id `16-r_WbF7S5Nbz9zj4GTiatqe0OGAGgVp6W1nAHdBvtE`),
+one tab per year, one row per Sunday, columns A–AJ (full map in the shared *Worship Planning*
+skill: `arapaho-service-schedule-key.md`). **Read it as CSV** (`download_file_content`,
+`exportMimeType=text/csv`) — the markdown/`read_file_content` render silently drops trailing
+columns and is NOT reliable for column-accurate values. Point Person (col A) rotates among
+Terri/Aaron/Cathy/Jonathan/Jenny and is NOT the Liturgist (col M).
