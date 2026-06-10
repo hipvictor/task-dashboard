@@ -2033,6 +2033,7 @@ function setTheme(theme) {
   // ─────────────── Email review tab ───────────────
   let emailItems = [];        // non-terminal queue rows
   let emailSuggestions = {};  // queue_id -> [{id, text, added, task_id}]
+  const submittedIds = new Set(); // committed via "Process now" — hidden from Needs-you until terminal (errors re-surface)
 
   async function loadEmailQueue() {
     const list = document.getElementById('email-queue-list');
@@ -2063,7 +2064,10 @@ function setTheme(theme) {
 
   function renderEmailQueue() {
     const drafted = emailItems.filter(i => i.status === 'drafted');
-    const needs = emailItems.filter(i => i.status !== 'drafted');
+    // Committed items drop out of "Needs you" so Jonathan can work in stages.
+    // Errors re-surface so they're never lost.
+    const needs = emailItems.filter(i => i.status !== 'drafted'
+      && !(submittedIds.has(i.id) && i.status !== 'error'));
 
     const draftedSection = document.getElementById('email-drafted-section');
     const draftedList = document.getElementById('email-drafted-list');
@@ -2097,9 +2101,12 @@ function setTheme(theme) {
 
     const asks = (item.asks && item.asks.length)
       ? `<ul class="email-asks">${item.asks.map(a => `<li>${escapeHTML(a)}</li>`).join('')}</ul>` : '';
-    const detail = item.summary_detail
-      ? `<details class="email-detail"><summary>More</summary><div class="email-detail-body">${escapeHTML(item.summary_detail)}${asks}</div></details>`
-      : asks;
+    const gmailLink = item.thread_id ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(item.thread_id)}` : null;
+    const linkLine = gmailLink ? `<div class="email-detail-link"><a href="${gmailLink}" target="_blank" rel="noopener">Open in Gmail →</a></div>` : '';
+    const detailInner = `${linkLine}${item.summary_detail ? `<div>${escapeHTML(item.summary_detail)}</div>` : ''}${asks}`;
+    const detail = detailInner.trim()
+      ? `<details class="email-detail"><summary>More</summary><div class="email-detail-body">${detailInner}</div></details>`
+      : '';
 
     const disp = item.disposition || '';
     const dispBtn = (d, label) =>
@@ -2115,15 +2122,11 @@ function setTheme(theme) {
         : `<div class="sugg"><span class="sugg-text">💡 ${escapeHTML(s.text)}</span><span class="sugg-actions"><button class="sugg-add" onclick="addSuggestion('${s.id}','${item.id}')">Add</button><button class="sugg-no" onclick="dismissSuggestion('${s.id}','${item.id}')">No</button></span></div>`
     ).join('')}</div>` : '';
 
-    const gmailLink = item.thread_id ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(item.thread_id)}` : null;
-    const openLink = gmailLink ? `<a class="email-open" href="${gmailLink}" target="_blank" rel="noopener">open</a>` : '';
-
     return `
       <div class="email-item${disp?' decided':''}" data-id="${item.id}">
         <div class="email-item-head">
           <span class="email-sender">${escapeHTML(item.sender || item.sender_email || 'Unknown')}${role}</span>
           ${chips.join('')}
-          ${openLink}
         </div>
         <div class="email-subject">${escapeHTML(item.subject || '(no subject)')}</div>
         <div class="email-summary">${escapeHTML(item.summary_short || '')}</div>
@@ -2200,15 +2203,24 @@ function setTheme(theme) {
   }
 
   async function processNow() {
-    const decided = emailItems.filter(i => i.status === 'decided' && i.disposition).length;
-    if (!decided) { showToast('Nothing decided yet', { type: 'error' }); return; }
+    const committed = emailItems.filter(i => i.status === 'decided' && i.disposition && !submittedIds.has(i.id));
+    if (!committed.length) { showToast('Nothing decided yet', { type: 'error' }); return; }
+    committed.forEach(i => submittedIds.add(i.id));
+    renderEmailQueue(); // committed items drop out of "Needs you" immediately
     try {
       const { error } = await sb.from('email_control')
         .update({ process_ready: true, requested_at: new Date().toISOString() })
         .eq('id', 1);
       if (error) throw error;
-      showToast(`Processing ${decided} — drafts will appear in Gmail shortly`);
-    } catch (e) { showToast(`Error: ${e.message}`, { type: 'error' }); }
+      showToast(`Processing ${committed.length} — drafts land in the Drafted lane; archived/left clear automatically`);
+      // Reconcile so drafted items + any errors surface without a manual refresh.
+      setTimeout(loadEmailQueue, 12000);
+      setTimeout(loadEmailQueue, 40000);
+    } catch (e) {
+      committed.forEach(i => submittedIds.delete(i.id));
+      renderEmailQueue();
+      showToast(`Error: ${e.message}`, { type: 'error' });
+    }
   }
 
   checkAuth();

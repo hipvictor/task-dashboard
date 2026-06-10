@@ -2685,6 +2685,15 @@
     .email-asks { margin: 0.4rem 0 0; padding-left: 1.1rem; }
     .email-asks li { margin-bottom: 0.2rem; }
 
+    .email-detail-link { margin-bottom: 0.45rem; }
+    .email-detail-link a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: calc(0.75rem * var(--size-scale));
+      font-weight: 500;
+    }
+    .email-detail-link a:hover { text-decoration: underline; }
+
     .email-suggestions { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; }
     .sugg {
       display: flex;
