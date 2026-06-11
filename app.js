@@ -2087,13 +2087,18 @@ function setTheme(theme) {
 
     const archived = Array.isArray(r.archived) ? r.archived : [];
     const gleanings = Array.isArray(r.gleanings) ? r.gleanings : [];
+    const glink = (tid) => tid ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(tid)}` : null;
+    const linkOr = (tid, text) => {
+      const u = glink(tid);
+      return u ? `<a href="${u}" target="_blank" rel="noopener">${escapeHTML(text)}</a>` : escapeHTML(text);
+    };
     const archivedHTML = archived.length
       ? `<details class="report-detail"><summary>Archived (${archived.length})</summary><ul>${
-          archived.map(a => `<li><span class="ra-sender">${escapeHTML(a.sender || '')}</span> — ${escapeHTML(a.subject || '')}</li>`).join('')}</ul></details>`
+          archived.map(a => `<li><span class="ra-sender">${escapeHTML(a.sender || '')}</span> — ${linkOr(a.thread_id, a.subject || '')}</li>`).join('')}</ul></details>`
       : '';
     const gleanHTML = gleanings.length
       ? `<details class="report-detail"><summary>Gleanings (${gleanings.length})</summary><ul>${
-          gleanings.map(g => `<li><span class="ra-sender">${escapeHTML(g.source || '')}</span> — ${escapeHTML(g.summary || '')}</li>`).join('')}</ul></details>`
+          gleanings.map(g => `<li><span class="ra-sender">${escapeHTML(g.source || '')}</span> — ${linkOr(g.thread_id, g.summary || '')}</li>`).join('')}</ul></details>`
       : '';
 
     const when = r.run_at ? new Date(r.run_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
@@ -2183,7 +2188,9 @@ function setTheme(theme) {
           <span class="email-sender">${escapeHTML(item.sender || item.sender_email || 'Unknown')}${role}</span>
           ${chips.join('')}
         </div>
-        <div class="email-subject">${escapeHTML(item.subject || '(no subject)')}</div>
+        <div class="email-subject">${gmailLink
+          ? `<a href="${gmailLink}" target="_blank" rel="noopener">${escapeHTML(item.subject || '(no subject)')}</a>`
+          : escapeHTML(item.subject || '(no subject)')}</div>
         <div class="email-summary">${escapeHTML(item.summary_short || '')}</div>
         ${detail}
         ${suggHTML}
