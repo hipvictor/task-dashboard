@@ -18,8 +18,11 @@ worship services (build at home, load on the church machine; both run PP7).
 - Library files come from the church's Drive mirror (owner jonathan@arapahoumc.org). Always
   size-verify downloads — large `.pro` files truncate silently and still parse.
 - ProPresenter needs its own ZIP64 dialect (`ppzip.py`) or slides won't import.
-- **Open work item**: CTW generation is still a June-14 proof-of-concept; generalizing
-  "any CTW doc → CTW slides" is the main piece left for fully one-command builds.
+- The skill is **assembly, not authorship**: CTW text, hymn picks, liturgist, etc. are decided
+  before it runs; planning must flag anything missing/unmatched, never invent it.
+- CTW is now formatted from the week's doc by `gen_ctw.py` (title + Leader/People exchanges +
+  All; liturgist on the title). **Open work item**: it holds ≤4 exchanges and flags overflow;
+  dynamic slide add/remove ("mostly 4 but must flex") is the remaining piece.
 
 ### Working branch
 Develop on `claude/propresenter-playlist-workflow-eonzM`; commit + push when work is complete.

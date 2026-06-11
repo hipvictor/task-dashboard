@@ -515,3 +515,15 @@ into the skill/docs + `CLAUDE.md` memory. Templates are committed media-less und
 `tools/propresenter/templates/{standard,communion}/`, so a build only fetches the week's
 variable library files from Drive. **Top open item:** generalize CTW-doc → CTW slides (still a
 June-14 POC).
+
+### 8.11 CTW formatter (gen_ctw.py)
+The CTW is **written by humans before the skill runs** — the skill formats it, it doesn't
+author it. `gen_ctw.py` reads the week's CTW doc text, parses the `Leader:` / `People:`
+exchanges + closing `All:`, and lays them into `CALL TO WORSHIP-2.pro`: title slide =
+"Call To Worship" + the liturgist (col 12); scripture/theme/rubric stay doc-only. It reuses
+the proven June-14 RTF/run/targeted-dirty machinery (the POC is superseded, kept for
+reference). Deck capacity = title + 4 content slots; ≤4 fill/clear cleanly, **>4 raises so the
+week is flagged** (dynamic slide add/remove — "mostly 4 but must flex" — is the open follow-up).
+Verified on the real June 14 doc: title + 3 exchanges + All, end-to-end build validates, and a
+5-exchange doc is correctly flagged. Planning (`analyze_week`) now also covers the liturgist
+(col 12) and community-prayer leader (col 24), so every element is checked/flagged.

@@ -70,13 +70,20 @@ Run the phases in order. Gates (⛔) require the user before continuing.
   spelling) → append to repo `CLAUDE.md`.
 - Commit and push to the working branch.
 
-## CTW generation — current limitation
-`gen_ctw_june14_poc.py` is a proof-of-concept hardcoded to June 14 (Juneteenth). It is NOT
-yet generalized to "any CTW doc → CTW slides." Until it is, generating the CTW for a new date
-is itself a build/iterate task within Phase 4: read the week's CTW doc, map its leader/people
-responsive sections to the title + body slides, regenerate `CALL TO WORSHIP-2.pro` (targeted
-dirty-marking only — never mark-all-dirty; see gotchas), set the liturgist name on the title.
-Generalizing this is the top open work item; fold progress back per Phase 7.
+## CTW = formatter, not author
+The CTW text is written by humans **before** this skill runs (so are hymn picks, liturgist,
+etc.). The skill's job is to *find, match, and lay them out* — and **flag** anything missing
+or unmatchable in planning, never invent it. For the CTW:
+- `gen_ctw.py <doc.txt> --liturgist "<col-12 name>" --out CALL\ TO\ WORSHIP-2.pro` reads the
+  week's CTW doc, pulls the `Leader:` / `People:` exchanges + closing `All:`, and lays them
+  into the deck. Title slide = "Call To Worship" + the liturgist; scripture/theme/rubric stay
+  doc-only.
+- Get the doc text via `read_file_content` on the week's CTW doc (find it by title `CTW
+  <MM/DD>`); save to a `.txt` first. **If the doc isn't found / is empty / doesn't parse →
+  flag it in the plan**, don't proceed on that slot.
+- **Capacity**: the deck holds a title + **4 content slots**. ≤4 exchanges fill and clear
+  cleanly; **>4 raises** and must be flagged (dynamic slide add/remove is the open follow-up —
+  "mostly 4 but must flex").
 
 ## Toolbelt (all under tools/propresenter/)
 - `analyze_week.py` — pre-build plan + gap flags.
@@ -84,6 +91,8 @@ Generalizing this is the top open work item; fold progress back per Phase 7.
   retitle, validate, bundle in PP's zip dialect.
 - `match_library.py` — hymn (UMH/TFWS/W&S # or title) and name→L3 matching.
 - `slot_map.py` — classify template items (cue/fixed/swap).
+- `gen_ctw.py` — CTW doc → CTW deck (formatter; ≤4 exchanges, flags overflow).
 - `ppzip.py` — ProPresenter ZIP64 writer (required; stock zip won't import).
 - `check_sizes.py` — download-truncation guard.
 - `pb.py` — protobuf read/encode (lenient parser; see UUID gotcha).
+- `gen_ctw_june14_poc.py` — superseded by `gen_ctw.py`; kept for reference only.
