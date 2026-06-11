@@ -16,7 +16,7 @@ whose value has no confident match, is left as the template default (and reporte
 Library .pro files for swapped-in items must be present in <swapcache> (fetch from the Drive
 mirror of ~/Documents/ProPresenter/Libraries).  CTW .pro path passed via --ctw.
 """
-import csv, sys, os, uuid as _uuid, importlib.util, argparse
+import csv, sys, os, re as _re, uuid as _uuid, importlib.util, argparse
 
 _HERE=os.path.dirname(__file__)
 def _load(n):
@@ -61,11 +61,13 @@ def _ref_is(c, suffix):
 def _clone(field):
     return pb.parse(field.raw_full)[0]            # independent deep copy via re-parse
 def _fresh_uuid(item):
-    """Give a cloned item a brand-new cue UUID at /1/1/6 (replace the whole field —
-    the stored UUID sometimes mis-parses as a sub-message)."""
-    A=_get(item.msg,1); B=_get(A.msg,1)
-    B.msg=[pb.sfield(6, str(_uuid.uuid4()).upper()) if f.fn==6 else f for f in B.msg]
-    for f in (item,A,B): f.dirty=True
+    """Give a cloned item a brand-new cue UUID. The real structure is item/1/1 = a 36-char
+    UUID string; a lenient parse can mis-split that string into phantom sub-fields, so set
+    the string value directly (msg=None) rather than editing inside the misparse."""
+    A=_get(item.msg,1)          # uuid wrapper message  (/1)
+    U=_get(A.msg,1)             # uuid string field      (/1/1)
+    U.value=str(_uuid.uuid4()).upper().encode(); U.msg=None; U.dirty=True
+    A.dirty=True; item.dirty=True
 def insert_community_prayer(a13, children, leader_basename, report):
     """Replace the Baptismal Liturgy item with: blank · leader L3 · Lord's Prayer · blank."""
     bap=next((c for c in children if _ref_is(c,"Baptismal Liturgy.pro")), None)
@@ -80,6 +82,22 @@ def insert_community_prayer(a13, children, leader_basename, report):
     i=a13.msg.index(bap); a13.msg[i:i+1]=[b1,l3,lp,b2]
     report.append(f"  ✓ Community Prayer: Baptismal Liturgy → blank · {leader_basename[:-4]} · Lord's Prayer · blank")
     return ("Baptismal Liturgy.pro", [leader_basename, "Lord's Prayer.pro"])
+
+_UUIDRE=_re.compile(rb'^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$')
+def _validate(data_bytes, bundled):
+    """Fail loudly if the manifest would not deserialize cleanly: every item must carry a
+    canonical cue UUID (item/1/1 = 0a26 0a24 <36-char>) and every ref must be bundled.
+    Guards against the lenient-parser misparse that corrupted cloned-item UUIDs."""
+    root=pb.parse(data_bytes)
+    a1=_get(_get(_get(root,3).msg,12).msg,1)
+    items=[c for c in _get(a1.msg,13).msg if c.fn==1 and c.msg]
+    for k,c in enumerate(items,1):
+        raw=_get(c.msg,1).raw_full
+        assert len(raw)==40 and raw[0]==0x0a and raw[2:4]==b'\x0a\x24' and _UUIDRE.match(raw[4:40]), \
+            f"item {k}: non-canonical cue UUID ({raw[:8].hex()})"
+        r=sm._ref(c.msg)
+        assert (not r) or r.split('/')[-1] in bundled, f"item {k}: dangling ref {r}"
+    return len(items)
 
 def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, baptism=False):
     rows=list(csv.reader(open(csv_path,newline="")))
@@ -156,6 +174,7 @@ def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, baptism=Fa
         src=os.path.join(swapcache,b); assert os.path.exists(src), f"missing swap file: {src}"
         present[b]=src
     present["CALL TO WORSHIP-2.pro"]=ctw_pro            # overwrite bundled CTW
+    _validate(new_data, set(present))                  # schema guard before shipping
     entries=[(fn, open(present[fn],"rb").read()) for fn in sorted(present)]
     entries.append(("data", new_data))                 # data last, like real exports
     ppzip.write(out_path, entries)

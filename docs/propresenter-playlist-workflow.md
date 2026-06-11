@@ -466,3 +466,18 @@ Also in v2:
 
 v2 self-verify (June 14): 42 items, 27 refs, **zero dangling**, 23 entries CRC-valid, all
 swaps + community-prayer block present, Baptismal Liturgy removed, CTW title = liturgist.
+
+### 8.9 v2.1 — fix ProtobufSerializableError on import
+v2 imported far enough to hit `ProtoHelpers.ProtobufSerializableError error 1` — i.e. the zip
+dialect was now correct (PP read the payloads) but a protobuf failed PP's *strict* (Swift)
+deserializer, which our lenient round-trip check can't catch.
+
+Root cause: the cue UUID is `item/1/1` = a 36-char string (`0a26 0a24 <uuid>`). Our lenient
+parser sometimes mis-splits that string into phantom sub-fields, and the community-prayer
+`_fresh_uuid` wrote a new UUID *into the misparse* — producing bytes that round-trip locally
+but violate the schema. PP parses `data` first, so this errored before any slide loaded.
+
+Fix: `_fresh_uuid` now sets `item/1/1` directly (value, `msg=None`). Added a `_validate()`
+guard that **fails the build** unless every item has a canonical cue UUID and every ref is
+bundled. Verified: all 42 items canonical + unique, CTW structurally identical to the known-
+good template CTW (only an optional run attribute differs), zero dangling refs.
