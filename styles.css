@@ -2758,3 +2758,56 @@
       color: var(--text-muted);
       margin-top: 0.2rem;
     }
+
+    /* State-of-the-inbox report card */
+    .email-report-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.7rem 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+    .report-head { display: flex; align-items: center; gap: 0.5rem; }
+    .report-title {
+      font-size: calc(0.8125rem * var(--size-scale));
+      font-weight: 600;
+      color: var(--text);
+    }
+    .report-gotit {
+      margin-left: auto;
+      font-family: var(--font);
+      font-size: calc(0.6875rem * var(--size-scale));
+      font-weight: 600;
+      padding: 0.25rem 0.7rem;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .report-gotit:hover { background: var(--accent); color: var(--bg); }
+    .report-stats { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .report-pill {
+      font-size: calc(0.6875rem * var(--size-scale));
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
+    }
+    .report-pill b { color: var(--text); }
+    .report-detail { margin-top: 0.5rem; }
+    .report-detail summary {
+      font-size: calc(0.75rem * var(--size-scale));
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .report-detail ul {
+      margin: 0.4rem 0 0;
+      padding-left: 1.1rem;
+      font-size: calc(0.75rem * var(--size-scale));
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .report-detail .ra-sender { color: var(--text); font-weight: 500; }

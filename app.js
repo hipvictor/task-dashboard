@@ -2056,10 +2056,65 @@ function setTheme(theme) {
         });
       }
       renderEmailQueue();
+      loadEmailReport();
     } catch (e) {
       console.error('Error loading email queue:', e);
       list.innerHTML = `<div class="email-empty">Error loading email queue: ${escapeHTML(e.message)}</div>`;
     }
+  }
+
+  async function loadEmailReport() {
+    try {
+      const { data } = await sb.from('email_run_reports')
+        .select('*').eq('dismissed', false)
+        .order('run_at', { ascending: false }).limit(1);
+      renderEmailReport(data && data[0]);
+    } catch (e) { console.error('Error loading email report:', e); }
+  }
+
+  function renderEmailReport(r) {
+    const host = document.getElementById('email-report');
+    if (!host) return;
+    if (!r) { host.innerHTML = ''; return; }
+
+    const s = r.stats || {};
+    const pill = (label, v) => (v || v === 0) ? `<span class="report-pill"><b>${v}</b> ${label}</span>` : '';
+    const stats = [
+      pill('processed', s.processed), pill('archived', s.archived_noise),
+      pill('gleaned', s.gleaned), pill('queued', s.queued),
+      pill('tasks', s.tasks_proposed), pill('seeds', s.seeds),
+    ].join('');
+
+    const archived = Array.isArray(r.archived) ? r.archived : [];
+    const gleanings = Array.isArray(r.gleanings) ? r.gleanings : [];
+    const archivedHTML = archived.length
+      ? `<details class="report-detail"><summary>Archived (${archived.length})</summary><ul>${
+          archived.map(a => `<li><span class="ra-sender">${escapeHTML(a.sender || '')}</span> — ${escapeHTML(a.subject || '')}</li>`).join('')}</ul></details>`
+      : '';
+    const gleanHTML = gleanings.length
+      ? `<details class="report-detail"><summary>Gleanings (${gleanings.length})</summary><ul>${
+          gleanings.map(g => `<li><span class="ra-sender">${escapeHTML(g.source || '')}</span> — ${escapeHTML(g.summary || '')}</li>`).join('')}</ul></details>`
+      : '';
+
+    const when = r.run_at ? new Date(r.run_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+    host.innerHTML = `
+      <div class="email-report-card">
+        <div class="report-head">
+          <span class="report-title">🧹 Inbox processed${when ? ' · ' + when : ''}</span>
+          <button class="report-gotit" onclick="dismissEmailReport('${r.id}')">Got it!</button>
+        </div>
+        <div class="report-stats">${stats || '<span class="report-pill">nothing to report</span>'}</div>
+        ${archivedHTML}
+        ${gleanHTML}
+      </div>
+    `;
+  }
+
+  async function dismissEmailReport(id) {
+    const host = document.getElementById('email-report');
+    if (host) host.innerHTML = '';
+    try { await sb.from('email_run_reports').update({ dismissed: true }).eq('id', id); }
+    catch (e) { showToast(`Error: ${e.message}`, { type: 'error' }); }
   }
 
   function renderEmailQueue() {
