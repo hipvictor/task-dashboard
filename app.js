@@ -1973,8 +1973,12 @@ function setTheme(theme) {
 
     setTimeout(() => {
       const marker = container.querySelector('.agenda-now-marker');
-      if (marker) {
-        marker.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const scroller = container.closest('.agenda-scroll');
+      // Scroll ONLY within the agenda's own scroll box — never the page/window
+      // (scrollIntoView bubbles to the window and was yanking the page to the calendar on load).
+      if (marker && scroller) {
+        scroller.scrollTop += marker.getBoundingClientRect().top
+          - scroller.getBoundingClientRect().top - scroller.clientHeight / 2;
       }
     }, 100);
   }

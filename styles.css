@@ -54,6 +54,9 @@
     html {
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
     }
 
     body {
@@ -62,9 +65,14 @@
       color: var(--text);
       line-height: 1.5;
       min-height: 100vh;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;   /* nothing may widen the page past the viewport (fixes iOS zoom-in) */
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
     }
+
+    #dashboard { max-width: 100%; overflow-x: hidden; }
 
     #login-screen {
       display: flex;
@@ -385,11 +393,13 @@
       position: relative;
       display: flex;
       flex-direction: column;
+      min-width: 0;   /* let the grid track shrink below content width (prevents overflow) */
     }
 
     .left-col-content {
       flex: 1;
       overflow-y: auto;
+      min-width: 0;
     }
 
     .left-col-bottom {
@@ -401,6 +411,7 @@
     .right-col {
       padding: 1.25rem;
       overflow-y: auto;
+      min-width: 0;
     }
 
     /* ── People View ── */
@@ -988,10 +999,12 @@
     .quick-add {
       display: flex;
       gap: 0.5rem;
+      flex-wrap: wrap;
     }
 
     .quick-add input {
       flex: 1;
+      min-width: 0;
       padding: 0.625rem 0.75rem;
       background: var(--surface);
       border: 1px solid var(--border);
