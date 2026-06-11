@@ -500,3 +500,18 @@ After v2.1 imported cleanly, two issues remained:
 Download lesson: `download_file_content` returns base64; large files must be size-checked
 against Drive `fileSize`, and the bytes recovered from the tool result on disk — never
 re-typed.
+
+### 8.10 v2.2 + the repeatable flow (skill)
+v2.2 closed the last two import issues: "Lift Every Voice" had no lyrics because the Drive
+download was **truncated** (9773 of 21736 bytes — a truncated `.pro` still round-trips, so size
+is the only signal; added `check_sizes.py` + a fetch-time size check), and the performance card
+still said "Rainbow" because the special-music title (col 19) wasn't being set (now wired:
+`L3 - Song Title` text ← col 19, title before " by ").
+
+The whole process is now a **skill**: `.claude/skills/worship-playlist/` (SKILL.md +
+CONVENTIONS.md), invoked as `/worship-playlist <date>`. It runs: load context → analyze →
+clarify (Q&A) → plan → confirm → build → self-check → user imports → iterate → fold learnings
+into the skill/docs + `CLAUDE.md` memory. Templates are committed media-less under
+`tools/propresenter/templates/{standard,communion}/`, so a build only fetches the week's
+variable library files from Drive. **Top open item:** generalize CTW-doc → CTW slides (still a
+June-14 POC).
