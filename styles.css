@@ -2826,3 +2826,19 @@
     .email-view a:hover,
     .email-report-card a:hover { color: var(--accent-hover); }
     .email-subject a { font-weight: inherit; }
+
+    /* Per-view search box (Proposals + Email) */
+    .view-search {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 1.25rem;
+      font-family: var(--font);
+      font-size: calc(0.8125rem * var(--size-scale));
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+    }
+    .view-search:focus { outline: none; border-color: var(--accent); }
+    .view-search::placeholder { color: var(--text-muted); }

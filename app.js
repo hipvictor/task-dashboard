@@ -634,9 +634,18 @@ function setTheme(theme) {
   const reviewSelectedIds = new Set();
   let reviewDeferMode = null; // null | 'single' | 'batch'
 
+  let reviewSearch = '';
+  function handleReviewSearch(v) { reviewSearch = (v || '').toLowerCase().trim(); renderReview(); }
+  function reviewMatches(t) {
+    if (!reviewSearch) return true;
+    const hay = [t.name, t.project, t.source_note, (t.tags || []).join(' ')].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(reviewSearch);
+  }
+
   function renderReview() {
-    const yours = reviewTasks.filter(t => !isOthersTask(t));
-    const others = reviewTasks.filter(t => isOthersTask(t));
+    const base = reviewTasks.filter(reviewMatches);
+    const yours = base.filter(t => !isOthersTask(t));
+    const others = base.filter(t => isOthersTask(t));
     renderReviewSection('yours', yours);
     renderReviewSection('others', others);
     updateReviewBatchBar();
@@ -2127,12 +2136,22 @@ function setTheme(theme) {
     catch (e) { showToast(`Error: ${e.message}`, { type: 'error' }); }
   }
 
+  let emailSearch = '';
+  function handleEmailSearch(v) { emailSearch = (v || '').toLowerCase().trim(); renderEmailQueue(); }
+  function emailMatches(i) {
+    if (!emailSearch) return true;
+    const hay = [i.sender, i.sender_email, i.subject, i.summary_short, i.summary_detail, i.role]
+      .filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(emailSearch);
+  }
+
   function renderEmailQueue() {
     const drafted = emailItems.filter(i => i.status === 'drafted');
     // Committed items drop out of "Needs you" so Jonathan can work in stages.
-    // Errors re-surface so they're never lost.
+    // Errors re-surface so they're never lost. Search filters the list.
     const needs = emailItems.filter(i => i.status !== 'drafted'
-      && !(submittedIds.has(i.id) && i.status !== 'error'));
+      && !(submittedIds.has(i.id) && i.status !== 'error')
+      && emailMatches(i));
 
     const draftedSection = document.getElementById('email-drafted-section');
     const draftedList = document.getElementById('email-drafted-list');

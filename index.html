@@ -196,6 +196,7 @@
       </div>
     </div>
     <div class="review-intro">Your landing inbox. Route each item to where it belongs — or select several and route them in bulk.</div>
+    <input type="text" class="view-search" id="review-search" placeholder="Search proposals…" oninput="handleReviewSearch(this.value)">
 
     <div class="review-section" id="review-yours-section">
       <div class="review-section-header">
@@ -224,6 +225,7 @@
       </div>
     </div>
     <div class="email-intro">Set an action per email (and add any tasks). Nothing happens until you hit <strong>Process now</strong>.</div>
+    <input type="text" class="view-search" id="email-search" placeholder="Search email…" oninput="handleEmailSearch(this.value)">
 
     <div id="email-report"></div>
 
