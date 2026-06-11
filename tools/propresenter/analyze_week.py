@@ -20,13 +20,15 @@ ml=_load("match_library")
 INV=json.load(open(os.path.join(_HERE,"data","library_inventory.json")))
 HYMNS, L3S = INV["hymns"], INV["l3s"]
 
-# slot -> (label, column index, kind)   kind: 'hymn' | 'person' | 'ctw' | 'card'
+# slot -> (label, column index, kind)   kind: 'hymn' | 'person' | 'ctw' | 'card' | 'name'
 SLOTS=[
     ("A","Welcome person",      8,  "person"),
     ("B","Accompanist (prelude)",10, "person"),
+    ("L","Liturgist (CTW title)",12, "name"),
     ("C","Call to Worship",     13, "ctw"),
     ("D","Opening hymn",        15, "hymn"),
     ("T","Special music (card)",19, "card"),
+    ("P","Community Prayer",    24, "person"),
     ("E","Invitation person",   28, "person"),
     ("F","Closing hymn",        30, "hymn"),
 ]
@@ -74,6 +76,8 @@ def analyze(csv_path, date):
             f=ml.match_person(val, L3S)
             if f: note=f"→ {f}"; mark="OK"
             else: note="NO MATCH → placeholder L3"; mark="X"; flags.append(f"[{sid}] person no match: {val!r}")
+        elif kind=="name":
+            note=f"name on CTW title = {val!r}"; mark="OK"   # text only, no library match
         elif kind=="card":
             note=f"title card text = {val!r}"; mark="OK"
         print(f"  {mark:>2} [{sid}] {label:<22} src={val[:40]!r:42} {note}")
