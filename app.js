@@ -129,9 +129,9 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === '/') {
     e.preventDefault();
     toggleSearch();
-  } else if (e.key >= '1' && e.key <= '4') {
+  } else if (e.key >= '1' && e.key <= '5') {
     e.preventDefault();
-    const views = ['tasks', 'briefing', 'review', 'email'];
+    const views = ['tasks', 'home', 'briefing', 'review', 'email'];
     const view = views[parseInt(e.key) - 1];
     if (view) switchView(view);
   }
@@ -293,31 +293,30 @@ function setTheme(theme) {
   }
 
   // ── View Switching ──
+  let taskDomain = 'work'; // Tasks tab = work, Home tab = home (both reuse the tasks-view)
   function switchView(viewName) {
-    // Hide all views
-    document.getElementById('tasks-view').classList.remove('active');
-    document.getElementById('briefing-view').classList.remove('active');
-    document.getElementById('review-view').classList.remove('active');
-    document.getElementById('email-view').classList.remove('active');
+    ['tasks-view', 'briefing-view', 'review-view', 'email-view']
+      .forEach(v => document.getElementById(v).classList.remove('active'));
+    const btns = document.querySelectorAll('.tab-btn');
+    btns.forEach(btn => btn.classList.remove('active'));
 
-    // Remove active class from all tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-
-    // Show selected view and activate tab (tab order: Tasks, Briefing, Proposals, Email)
-    if (viewName === 'tasks') {
+    // tab order: Tasks(0) Home(1) Briefing(2) Proposals(3) Email(4)
+    if (viewName === 'tasks' || viewName === 'home') {
+      taskDomain = viewName === 'home' ? 'home' : 'work';
       document.getElementById('tasks-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      btns[viewName === 'home' ? 1 : 0].classList.add('active');
+      renderTasks();
     } else if (viewName === 'briefing') {
       document.getElementById('briefing-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      btns[2].classList.add('active');
       loadBriefing();
     } else if (viewName === 'review') {
       document.getElementById('review-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[2].classList.add('active');
+      btns[3].classList.add('active');
       loadReview();
     } else if (viewName === 'email') {
       document.getElementById('email-view').classList.add('active');
-      document.querySelectorAll('.tab-btn')[3].classList.add('active');
+      btns[4].classList.add('active');
       loadEmailQueue();
     }
   }
@@ -623,8 +622,8 @@ function setTheme(theme) {
 
   // Proposals routing: Shelf / Bench / Deferred / Someday / Delegate / Delete.
   const REVIEW_ROUTES = [
-    { dest: 'shelf',     label: 'Shelf' },
     { dest: 'bench',     label: 'Bench' },
+    { dest: 'shelf',     label: 'Shelf' },
     { dest: 'deferred',  label: 'Defer' },
     { dest: 'someday',   label: 'Someday' },
     { dest: 'delegate',  label: 'Delegate' },
@@ -679,6 +678,8 @@ function setTheme(theme) {
       : '';
 
     const checked = reviewSelectedIds.has(task.id) ? ' checked' : '';
+    const homeOn = (task.domain === 'home');
+    const homeBtn = `<button class="route-btn home-toggle${homeOn ? ' active' : ''}" onclick="toggleProposalHome('${task.id}')" title="Mark Home (independent of where you route it)">⌂ Home</button>`;
     const routeBtns = REVIEW_ROUTES.map(r =>
       `<button class="route-btn${r.danger ? ' danger' : ''}" onclick="routeProposal('${task.id}', '${r.dest}')">${r.label}</button>`
     ).join('');
@@ -690,7 +691,7 @@ function setTheme(theme) {
           <div class="review-item-name" onclick="openReviewEditor('${task.id}', event)" title="Click to edit">${escapeHTML(task.name)}</div>
           ${tags.length ? `<div class="review-item-meta">${tags.join('')}</div>` : ''}
           ${source}
-          <div class="route-bar">${routeBtns}</div>
+          <div class="route-bar">${homeBtn}${routeBtns}</div>
         </div>
       </div>
     `;
@@ -789,6 +790,29 @@ function setTheme(theme) {
     }
     await applyReviewRoute(ids, dest);
     if (reviewSelectMode) toggleReviewSelectMode();
+  }
+
+  // Home is an independent toggle (sets domain), separate from where the item is routed.
+  async function toggleProposalHome(id) {
+    const t = reviewTasks.find(x => x.id === id);
+    if (!t) return;
+    const newDomain = (t.domain === 'home') ? 'work' : 'home';
+    t.domain = newDomain;
+    renderReview();
+    try {
+      const { error } = await sb.from('tasks').update({ domain: newDomain }).eq('id', id);
+      if (error) { t.domain = newDomain === 'home' ? 'work' : 'home'; renderReview(); showToast('Error: ' + error.message, { type: 'error' }); }
+    } catch (e) { t.domain = newDomain === 'home' ? 'work' : 'home'; renderReview(); showToast('Error: ' + e.message, { type: 'error' }); }
+  }
+
+  async function reviewBatchHome() {
+    const ids = [...reviewSelectedIds];
+    if (!ids.length) return;
+    ids.forEach(i => { const t = reviewTasks.find(x => x.id === i); if (t) t.domain = 'home'; });
+    renderReview();
+    try { await sb.from('tasks').update({ domain: 'home' }).in('id', ids); showToast(`${ids.length} marked Home`); }
+    catch (e) { showToast('Error: ' + e.message, { type: 'error' }); }
+    // keep selection so they can still be routed to a bucket
   }
 
   // Inline editor for review items — reuses the same edit UI shape as tasks.
@@ -934,13 +958,12 @@ function setTheme(theme) {
   }
 
   function getFilteredTasks(status) {
-    const domain = document.getElementById('filter-domain').value;
     const project = document.getElementById('filter-project').value;
     const tag = document.getElementById('filter-tag').value;
 
     return allTasks.filter(t => {
       if (t.status !== status) return false;
-      if (domain !== 'all' && t.domain !== domain) return false;
+      if ((t.domain || 'work') !== taskDomain) return false;  // Tasks tab = work, Home tab = home
       if (project !== 'all' && t.project !== project) return false;
       if (tag !== 'all' && (!t.tags || !t.tags.includes(tag))) return false;
 
@@ -973,7 +996,7 @@ function setTheme(theme) {
         return new Date(a.defer_date) - new Date(b.defer_date);
       });
     const done = allTasks
-      .filter(t => t.status === 'done' && t.completed_at)
+      .filter(t => t.status === 'done' && t.completed_at && (t.domain || 'work') === taskDomain)
       .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
       .slice(0, 5);
 
@@ -1614,7 +1637,7 @@ function setTheme(theme) {
       id: 'temp-' + Date.now(),
       name: name,
       status: pool,
-      domain: 'work',
+      domain: taskDomain,
       capture_notes: name,
       done: false,
       created_at: new Date().toISOString()
@@ -1633,7 +1656,7 @@ function setTheme(theme) {
         .insert({
           name: name,
           status: pool,
-          domain: 'work',
+          domain: taskDomain,
           capture_notes: name
         });
 
@@ -2239,9 +2262,10 @@ function setTheme(theme) {
         <div class="email-item-head">
           <span class="email-sender">${escapeHTML(item.sender || item.sender_email || 'Unknown')}</span>
           <a class="email-open" href="${gmailLink}" target="_blank" rel="noopener">open in Gmail →</a>
+          <button class="drafted-gotit" onclick="dismissDrafted('${item.id}')" title="Clear this from the lane">Got it</button>
         </div>
         <div class="email-subject">${escapeHTML(item.subject || '(no subject)')}</div>
-        <div class="email-drafted-note">Draft ready — review &amp; send from Gmail. Clears once sent.</div>
+        <div class="email-drafted-note">Draft ready — review &amp; send from Gmail. Clears when sent, or hit "Got it".</div>
       </div>
     `;
   }
@@ -2311,6 +2335,15 @@ function setTheme(theme) {
       renderEmailQueue();
       showToast(`Error: ${e.message}`, { type: 'error' });
     }
+  }
+
+  // Clear a drafted item from the lane (e.g. you handled it elsewhere). Marks the row done.
+  async function dismissDrafted(id) {
+    emailItems = emailItems.filter(i => i.id !== id);
+    renderEmailQueue();
+    showToast('Cleared from Drafted');
+    try { await sb.from('email_queue').update({ status: 'done', processed_at: new Date().toISOString() }).eq('id', id); }
+    catch (e) { showToast('Error: ' + e.message, { type: 'error' }); }
   }
 
   // ─────────────── Quick capture (persistent +) → Proposals ───────────────

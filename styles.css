@@ -2554,6 +2554,33 @@
       color: #fff;
     }
 
+    /* Home toggle on a proposal — independent of where it routes */
+    .route-btn.home-toggle.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: var(--bg);
+    }
+    .route-btn.home-toggle:hover {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: var(--bg);
+    }
+
+    /* "Got it" on a drafted email */
+    .drafted-gotit {
+      margin-left: 0.5rem;
+      font-family: var(--font);
+      font-size: calc(0.6875rem * var(--size-scale));
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .drafted-gotit:hover { background: var(--surface-hover); color: var(--text); border-color: var(--text-muted); }
+
     /* ── Email review tab ── */
     .view.active.email-view {
       display: block;

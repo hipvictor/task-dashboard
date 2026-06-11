@@ -57,6 +57,7 @@
 
   <div class="tab-nav">
     <button class="tab-btn active" onclick="switchView('tasks')">Tasks</button>
+    <button class="tab-btn" onclick="switchView('home')">Home</button>
     <button class="tab-btn" onclick="switchView('briefing')">Briefing</button>
     <button class="tab-btn" onclick="switchView('review')">Proposals</button>
     <button class="tab-btn" onclick="switchView('email')">Email</button>
@@ -66,19 +67,21 @@
     <div class="left-col">
       <div class="left-col-content">
         <div class="section" id="bench-section">
-          <div class="section-header">
-            <span class="section-title">🎯 Bench</span>
+          <div class="section-header collapsible-header open" onclick="toggleCollapsible('bench')">
+            <span class="section-title"><span class="arrow" id="bench-arrow">▸</span> 🎯 Bench</span>
             <span class="section-count" id="bench-count">0</span>
           </div>
-          <div id="bench-tasks" class="drop-zone" data-pool="bench" data-pool-label="Drop here → Bench" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'bench')"></div>
+          <div class="collapsible-body open" id="bench-body">
+            <div id="bench-tasks" class="drop-zone" data-pool="bench" data-pool-label="Drop here → Bench" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'bench')"></div>
+          </div>
         </div>
 
         <div class="section" id="shelf-section">
-          <div class="section-header collapsible-header" onclick="toggleCollapsible('shelf')">
+          <div class="section-header collapsible-header open" onclick="toggleCollapsible('shelf')">
             <span class="section-title"><span class="arrow" id="shelf-arrow">▸</span> 📦 Shelf</span>
             <span class="section-count" id="shelf-count">0</span>
           </div>
-          <div class="collapsible-body" id="shelf-body">
+          <div class="collapsible-body open" id="shelf-body">
             <div id="shelf-tasks" class="drop-zone" data-pool="shelf" data-pool-label="Drop here → Shelf" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'shelf')"></div>
           </div>
         </div>
@@ -117,11 +120,6 @@
 
       <div class="left-col-bottom">
         <div class="filter-bar">
-          <select id="filter-domain" onchange="renderTasks()">
-            <option value="all">All domains</option>
-            <option value="work">Work</option>
-            <option value="home">Home</option>
-          </select>
           <select id="filter-project" onchange="renderTasks()">
             <option value="all">All projects</option>
           </select>
@@ -249,8 +247,9 @@
 
 <div class="batch-bar" id="review-batch-bar">
   <span class="batch-count" id="review-batch-count">0 selected</span>
-  <button onclick="reviewBatchRoute('shelf')">→ Shelf</button>
+  <button onclick="reviewBatchHome()">⌂ Home</button>
   <button onclick="reviewBatchRoute('bench')">→ Bench</button>
+  <button onclick="reviewBatchRoute('shelf')">→ Shelf</button>
   <button onclick="reviewBatchRoute('deferred')">→ Deferred</button>
   <button onclick="reviewBatchRoute('someday')">→ Someday</button>
   <button onclick="reviewBatchRoute('delegate')">→ Delegate</button>
@@ -260,8 +259,8 @@
 
 <div class="batch-bar" id="batch-bar">
   <span class="batch-count" id="batch-count">0 selected</span>
-  <button onclick="batchMove('shelf')">→ Shelf</button>
   <button onclick="batchMove('bench')">→ Bench</button>
+  <button onclick="batchMove('shelf')">→ Shelf</button>
   <button onclick="batchMove('deferred')">→ Deferred</button>
   <button onclick="batchMove('someday')">→ Someday</button>
   <button onclick="batchMove('delegate')">→ Delegate</button>
@@ -299,9 +298,10 @@
   <div class="shortcut-row"><span>New task</span><span class="kbd-hint">n</span></div>
   <div class="shortcut-row"><span>Search tasks</span><span class="kbd-hint">/</span></div>
   <div class="shortcut-row"><span>Tasks tab</span><span class="kbd-hint">1</span></div>
-  <div class="shortcut-row"><span>Briefing tab</span><span class="kbd-hint">2</span></div>
-  <div class="shortcut-row"><span>Proposals tab</span><span class="kbd-hint">3</span></div>
-  <div class="shortcut-row"><span>Email tab</span><span class="kbd-hint">4</span></div>
+  <div class="shortcut-row"><span>Home tab</span><span class="kbd-hint">2</span></div>
+  <div class="shortcut-row"><span>Briefing tab</span><span class="kbd-hint">3</span></div>
+  <div class="shortcut-row"><span>Proposals tab</span><span class="kbd-hint">4</span></div>
+  <div class="shortcut-row"><span>Email tab</span><span class="kbd-hint">5</span></div>
   <div class="shortcut-row"><span>Close / Cancel</span><span class="kbd-hint">Esc</span></div>
   <div class="shortcut-row"><span>Show this help</span><span class="kbd-hint">?</span></div>
 </div>
