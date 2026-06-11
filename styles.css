@@ -50,12 +50,20 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    /* Stop iOS Safari from auto-inflating text in wide single-column views (Proposals/Email/Briefing). */
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
     body {
       font-family: var(--font);
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
       min-height: 100vh;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
     }
 
     #login-screen {

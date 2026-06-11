@@ -691,7 +691,7 @@ function setTheme(theme) {
           <div class="review-item-name" onclick="openReviewEditor('${task.id}', event)" title="Click to edit">${escapeHTML(task.name)}</div>
           ${tags.length ? `<div class="review-item-meta">${tags.join('')}</div>` : ''}
           ${source}
-          <div class="route-bar">${homeBtn}${routeBtns}</div>
+          <div class="route-bar">${routeBtns}${homeBtn}</div>
         </div>
       </div>
     `;
