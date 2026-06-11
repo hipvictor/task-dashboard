@@ -481,3 +481,22 @@ Fix: `_fresh_uuid` now sets `item/1/1` directly (value, `msg=None`). Added a `_v
 guard that **fails the build** unless every item has a canonical cue UUID and every ref is
 bundled. Verified: all 42 items canonical + unique, CTW structurally identical to the known-
 good template CTW (only an optional run attribute differs), zero dangling refs.
+
+### 8.10 v2.2 — truncated hymn downloads + special-music card
+After v2.1 imported cleanly, two issues remained:
+- **Lift Every Voice had no lyrics.** Root cause: the subagent that downloaded library .pro
+  files **truncated the large ones** while handling base64 (519 came down 9,773 of 21,736 B;
+  2172 19,980 of 22,709 B). A truncated protobuf still round-trips, so it passed the old
+  check — but the lost tail held fields 17/18 (the arrangement), so ProPresenter showed the
+  presentation with no usable slides. Fix: re-fetched both in full by extracting the complete
+  base64 from the session transcript (reliable; no hand-transcription) and verifying byte size
+  == Drive `fileSize`. Added a build guard: every bundled presentation must carry fields 17/18
+  or the build fails (catches truncation).
+- **Performance-song card said "Rainbow."** That was template placeholder text in
+  `L3 - Song Title.pro`. Added `song_title_card()`: sets the quoted title from col 19
+  (Special Music/Anthem), dropping the "by <composer>" tail. The card has no character-range
+  runs, so a substring swap is safe.
+
+Download lesson: `download_file_content` returns base64; large files must be size-checked
+against Drive `fileSize`, and the bytes recovered from the tool result on disk — never
+re-typed.

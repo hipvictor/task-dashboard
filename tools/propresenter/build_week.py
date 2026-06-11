@@ -84,6 +84,37 @@ def insert_community_prayer(a13, children, leader_basename, report):
     return ("Baptismal Liturgy.pro", [leader_basename, "Lord's Prayer.pro"])
 
 _UUIDRE=_re.compile(rb'^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$')
+
+def _rtf_esc(t):
+    cp={0x2019:"\\'92",0x2018:"\\'91",0x201c:"\\'93",0x201d:"\\'94",0x2014:"\\'97",
+        0x2013:"\\'96",0x2026:"\\'85"}
+    o=[]
+    for ch in t:
+        c=ord(ch)
+        if ch=='\\': o.append('\\\\')
+        elif ch in '{}': o.append('\\'+ch)
+        elif c<128: o.append(ch)
+        else: o.append(cp.get(c,"\\u%d?"%c))
+    return ''.join(o).encode()
+
+def song_title_card(src_bytes, title):
+    """Return L3 - Song Title .pro bytes with the quoted song title replaced. The card has no
+    character-range runs (pure-RTF formatting), so a substring swap is safe."""
+    root=pb.parse(src_bytes); target=None
+    def walk(fs,chain):
+        nonlocal target
+        for f in fs:
+            if f.wt==2 and f.msg is None and b'rtf1' in (f.value or b'') and b"\\'93" in f.value:
+                target=chain+[f]
+            elif f.wt==2 and f.msg is not None: walk(f.msg,chain+[f])
+    walk(root,[])
+    if not target: return src_bytes
+    rtf=target[-1]; esc=_rtf_esc(title)
+    rtf.value=_re.sub(rb"\\'93.*?\\'94", lambda m: b"\\'93"+esc+b"\\'94", rtf.value, count=1, flags=_re.S)
+    rtf.msg=None
+    for f in target: f.dirty=True
+    return pb.encode(root)
+
 def _validate(data_bytes, bundled):
     """Fail loudly if the manifest would not deserialize cleanly: every item must carry a
     canonical cue UUID (item/1/1 = 0a26 0a24 <36-char>) and every ref must be bundled.
@@ -175,7 +206,18 @@ def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, baptism=Fa
         present[b]=src
     present["CALL TO WORSHIP-2.pro"]=ctw_pro            # overwrite bundled CTW
     _validate(new_data, set(present))                  # schema guard before shipping
-    entries=[(fn, open(present[fn],"rb").read()) for fn in sorted(present)]
+    # bytes for each entry (read files; CTW from its path)
+    blobs={fn: open(p,"rb").read() for fn,p in present.items()}
+    # special-music title card: set the quoted title from col 19 (Special Music/Anthem)
+    if g(19) and "L3 - Song Title.pro" in blobs:
+        title=g(19).split(" by ")[0].strip()           # title, drop "by <composer>"
+        blobs["L3 - Song Title.pro"]=song_title_card(blobs["L3 - Song Title.pro"], title)
+        report.append(f"  ✓ Special-music card: title → {title!r}")
+    for fn,b in blobs.items():                          # truncation guard: a complete
+        present_fns={f.fn for f in pb.parse(b)}          # presentation carries its arrangement
+        assert 17 in present_fns and 18 in present_fns, \
+            f"{fn} looks truncated/incomplete (missing arrangement fields 17/18) — re-download"
+    entries=[(fn, blobs[fn]) for fn in sorted(blobs)]
     entries.append(("data", new_data))                 # data last, like real exports
     ppzip.write(out_path, entries)
     print(f"=== Built {out_path}  ({os.path.getsize(out_path)} bytes, {len(entries)} entries) ===")
