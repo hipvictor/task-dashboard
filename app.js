@@ -2092,13 +2092,18 @@ function setTheme(theme) {
       const u = glink(tid);
       return u ? `<a href="${u}" target="_blank" rel="noopener">${escapeHTML(text)}</a>` : escapeHTML(text);
     };
+    const fmtD = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    const reportRow = (who, e) => `<li>
+        <span class="ra-sender">${escapeHTML(who || '')}</span>${e.date ? ` <span class="ra-date">${fmtD(e.date)}</span>` : ''} — ${linkOr(e.thread_id, e.subject || e.summary || '(no subject)')}
+        ${e.summary ? `<div class="ra-summary">${escapeHTML(e.summary)}</div>` : ''}
+      </li>`;
     const archivedHTML = archived.length
       ? `<details class="report-detail"><summary>Archived (${archived.length})</summary><ul>${
-          archived.map(a => `<li><span class="ra-sender">${escapeHTML(a.sender || '')}</span> — ${linkOr(a.thread_id, a.subject || '')}</li>`).join('')}</ul></details>`
+          archived.map(a => reportRow(a.sender, a)).join('')}</ul></details>`
       : '';
     const gleanHTML = gleanings.length
       ? `<details class="report-detail"><summary>Gleanings (${gleanings.length})</summary><ul>${
-          gleanings.map(g => `<li><span class="ra-sender">${escapeHTML(g.source || '')}</span> — ${linkOr(g.thread_id, g.summary || '')}</li>`).join('')}</ul></details>`
+          gleanings.map(g => reportRow(g.source, g)).join('')}</ul></details>`
       : '';
 
     const when = r.run_at ? new Date(r.run_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
@@ -2153,6 +2158,9 @@ function setTheme(theme) {
 
   function emailItemHTML(item) {
     const role = item.role ? ` · ${escapeHTML(item.role)}` : '';
+    const dateStr = item.email_date
+      ? new Date(item.email_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
     const chips = [];
     if (item.tier === 4) chips.push('<span class="email-chip pastoral">🟡 Pastoral</span>');
     if (item.is_decision) chips.push('<span class="email-chip decision">⚡ Decision</span>');
@@ -2187,6 +2195,7 @@ function setTheme(theme) {
         <div class="email-item-head">
           <span class="email-sender">${escapeHTML(item.sender || item.sender_email || 'Unknown')}${role}</span>
           ${chips.join('')}
+          ${dateStr ? `<span class="email-date">${dateStr}</span>` : ''}
         </div>
         <div class="email-subject">${gmailLink
           ? `<a href="${gmailLink}" target="_blank" rel="noopener">${escapeHTML(item.subject || '(no subject)')}</a>`

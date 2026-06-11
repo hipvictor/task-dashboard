@@ -2811,3 +2811,18 @@
       line-height: 1.5;
     }
     .report-detail .ra-sender { color: var(--text); font-weight: 500; }
+    .report-detail .ra-date,
+    .email-date { color: var(--text-muted); font-size: calc(0.6875rem * var(--size-scale)); }
+    .email-date { margin-left: auto; }
+    .ra-summary { color: var(--text-muted); margin-top: 0.15rem; line-height: 1.45; }
+
+    /* Readable links everywhere in the Email tab + report (default blue is unreadable on dark) */
+    .email-view a,
+    .email-report-card a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .email-view a:hover,
+    .email-report-card a:hover { color: var(--accent-hover); }
+    .email-subject a { font-weight: inherit; }
