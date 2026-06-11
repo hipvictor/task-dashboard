@@ -81,9 +81,11 @@ or unmatchable in planning, never invent it. For the CTW:
 - Get the doc text via `read_file_content` on the week's CTW doc (find it by title `CTW
   <MM/DD>`); save to a `.txt` first. **If the doc isn't found / is empty / doesn't parse →
   flag it in the plan**, don't proceed on that slot.
-- **Capacity**: the deck holds a title + **4 content slots**. ≤4 exchanges fill and clear
-  cleanly; **>4 raises** and must be flagged (dynamic slide add/remove is the open follow-up —
-  "mostly 4 but must flex").
+- **Flexible length**: it rebuilds the deck to any number of exchanges — keeps the title cue,
+  clones a content cue (regenerating every UUID) once per exchange, fills each, and rewrites
+  the cue-group display order + cue list. Works by the cue-group's DISPLAY order (storage
+  order differs), and self-validates (round-trip, canonical/unique cue UUIDs, no dangling
+  refs). Verified for 2 / 4 / 6 exchanges.
 
 ## Toolbelt (all under tools/propresenter/)
 - `analyze_week.py` — pre-build plan + gap flags.

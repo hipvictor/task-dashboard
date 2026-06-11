@@ -20,9 +20,9 @@ worship services (build at home, load on the church machine; both run PP7).
 - ProPresenter needs its own ZIP64 dialect (`ppzip.py`) or slides won't import.
 - The skill is **assembly, not authorship**: CTW text, hymn picks, liturgist, etc. are decided
   before it runs; planning must flag anything missing/unmatched, never invent it.
-- CTW is now formatted from the week's doc by `gen_ctw.py` (title + Leader/People exchanges +
-  All; liturgist on the title). **Open work item**: it holds ≤4 exchanges and flags overflow;
-  dynamic slide add/remove ("mostly 4 but must flex") is the remaining piece.
+- CTW is formatted from the week's doc by `gen_ctw.py` (title + Leader/People exchanges + All;
+  liturgist on the title). It is **flexible to any length** — clones content cues and rewrites
+  the cue-group display order; works by display order (not storage order) and self-validates.
 
 ### Working branch
 Develop on `claude/propresenter-playlist-workflow-eonzM`; commit + push when work is complete.

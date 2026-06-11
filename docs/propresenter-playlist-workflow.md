@@ -527,3 +527,14 @@ week is flagged** (dynamic slide add/remove — "mostly 4 but must flex" — is 
 Verified on the real June 14 doc: title + 3 exchanges + All, end-to-end build validates, and a
 5-exchange doc is correctly flagged. Planning (`analyze_week`) now also covers the liturgist
 (col 12) and community-prayer leader (col 24), so every element is checked/flagged.
+
+### 8.12 CTW flexible length (gen_ctw v2) + display-order fix
+`gen_ctw` now builds the CTW deck to ANY number of exchanges ("mostly 4 but must flex"). Key
+correction: a presentation's display order is the **cue-group** (top-level fn=12: header +
+repeated fn=2 refs, each fn=2={fn=1:<cue-uuid>}), NOT cue storage order — v1's fixed container
+indices (0,4,7,10,13) actually wrote into empty stage boxes on the committed template. v2
+keeps the title cue, **clones a content cue per exchange** (regenerating every UUID via
+byte-level replace), fills box 0 of each, and rewrites both the fn=13 cue list and the fn=12
+ref list in display order. Self-validates (round-trip, canonical+unique cue UUIDs, no dangling
+refs); verified for N=2/4/6 and the real June 14 doc end-to-end. This closes the last
+turnkey gap — any CTW, any length.
