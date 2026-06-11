@@ -286,7 +286,12 @@
   </div>
 </div>
 
-<button class="fab-add" id="fab-add" onclick="document.getElementById('quick-add-input').focus(); document.getElementById('quick-add-input').scrollIntoView({behavior:'smooth'})" title="Add task">+</button>
+<button class="fab-add" id="fab-add" onclick="toggleQuickCapture()" title="Quick add to Proposals">+</button>
+<div class="quick-capture" id="quick-capture">
+  <input type="text" id="quick-capture-input" placeholder="Quick add to Proposals…"
+    onkeydown="if(event.key==='Enter')submitQuickCapture(); if(event.key==='Escape')closeQuickCapture();">
+  <button onclick="submitQuickCapture()">Add</button>
+</div>
 <div class="toast-container" id="toast-container"></div>
 <div class="shortcut-overlay" id="shortcut-overlay" onclick="hideShortcutHelp()"></div>
 <div class="shortcut-help" id="shortcut-help">

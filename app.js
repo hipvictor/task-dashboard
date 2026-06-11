@@ -2313,6 +2313,35 @@ function setTheme(theme) {
     }
   }
 
+  // ─────────────── Quick capture (persistent +) → Proposals ───────────────
+  function toggleQuickCapture() {
+    const qc = document.getElementById('quick-capture');
+    if (qc.classList.contains('open')) { closeQuickCapture(); return; }
+    qc.classList.add('open');
+    document.getElementById('fab-add').classList.add('active');
+    const i = document.getElementById('quick-capture-input');
+    i.value = ''; i.focus();
+  }
+  function closeQuickCapture() {
+    document.getElementById('quick-capture').classList.remove('open');
+    document.getElementById('fab-add').classList.remove('active');
+  }
+  async function submitQuickCapture() {
+    const i = document.getElementById('quick-capture-input');
+    const name = i.value.trim();
+    if (!name) { closeQuickCapture(); return; }
+    i.value = '';
+    closeQuickCapture();
+    showToast('Added to Proposals');
+    try {
+      const { error } = await sb.from('tasks')
+        .insert({ name, status: 'proposed', domain: 'work', source_note: 'quick-capture', tags: ['quick'] });
+      if (error) { showToast('Error: ' + error.message, { type: 'error' }); return; }
+      // If Proposals is open, refresh so it shows immediately.
+      if (document.getElementById('review-view').classList.contains('active')) loadReview();
+    } catch (e) { showToast('Error: ' + e.message, { type: 'error' }); }
+  }
+
   checkAuth();
 
   document.getElementById('login-password').addEventListener('keydown', e => {
