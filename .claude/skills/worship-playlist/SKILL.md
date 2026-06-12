@@ -13,11 +13,12 @@ column map, library locations, decisions, and gotchas — do not rely on memory 
 Run the phases in order. Gates (⛔) require the user before continuing.
 
 ## Phase 0 — Load context
-- Read `docs/propresenter-playlist-workflow.md` (full spec + decoded format + history).
-- Read `CONVENTIONS.md` here (column map, Drive folder IDs, decisions, gotchas).
-- Read repo `CLAUDE.md` memory for standing notes / per-person or per-date corrections.
-- Confirm the tools are present under `tools/propresenter/` and the templates under
-  `tools/propresenter/templates/{standard,communion}/`.
+- Always read (the per-run essentials): `CONVENTIONS.md` here (column map, Drive folder IDs,
+  decisions, gotchas) and repo `CLAUDE.md` memory (standing notes, per-person / per-date
+  corrections).
+- Consult `docs/propresenter-playlist-workflow.md` (full spec + decoded format + history)
+  **only when something the conventions don't settle comes up** — a new format quirk, an
+  import failure, an unfamiliar element. Don't read it end-to-end every run.
 
 ## Phase 1 — Analyze the week
 - Get the schedule as CSV (export the Sheet to `text/csv`; NEVER the markdown render — it
