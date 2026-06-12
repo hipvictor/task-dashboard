@@ -2103,8 +2103,14 @@ function setTheme(theme) {
     try {
       const { data } = await sb.from('email_run_reports')
         .select('*').eq('dismissed', false)
-        .order('run_at', { ascending: false }).limit(1);
-      renderEmailReport(data && data[0]);
+        .order('run_at', { ascending: false });
+      const list = data || [];
+      // Only ever show the newest report — auto-dismiss any older ones so they never stack up.
+      if (list.length > 1) {
+        const olderIds = list.slice(1).map(r => r.id);
+        sb.from('email_run_reports').update({ dismissed: true }).in('id', olderIds).then(() => {}, () => {});
+      }
+      renderEmailReport(list[0]);
     } catch (e) { console.error('Error loading email report:', e); }
   }
 
@@ -2133,13 +2139,15 @@ function setTheme(theme) {
         <span class="ra-sender">${escapeHTML(who || '')}</span>${e.date ? ` <span class="ra-date">${fmtD(e.date)}</span>` : ''} — ${linkOr(e.thread_id, e.subject || e.summary || '(no subject)')}
         ${e.summary ? `<div class="ra-summary">${escapeHTML(e.summary)}</div>` : ''}
       </li>`;
+    const CAP = 10;
+    const more = (arr) => arr.length > CAP ? `<li class="ra-more">+${arr.length - CAP} more</li>` : '';
     const archivedHTML = archived.length
       ? `<details class="report-detail"><summary>Archived (${archived.length})</summary><ul>${
-          archived.map(a => reportRow(a.sender, a)).join('')}</ul></details>`
+          archived.slice(0, CAP).map(a => reportRow(a.sender, a)).join('')}${more(archived)}</ul></details>`
       : '';
     const gleanHTML = gleanings.length
       ? `<details class="report-detail"><summary>Gleanings (${gleanings.length})</summary><ul>${
-          gleanings.map(g => reportRow(g.source, g)).join('')}</ul></details>`
+          gleanings.slice(0, CAP).map(g => reportRow(g.source, g)).join('')}${more(gleanings)}</ul></details>`
       : '';
 
     const when = r.run_at ? new Date(r.run_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';

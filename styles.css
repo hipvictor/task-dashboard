@@ -2898,6 +2898,7 @@
     .email-date { color: var(--text-muted); font-size: calc(0.6875rem * var(--size-scale)); }
     .email-date { margin-left: auto; }
     .ra-summary { color: var(--text-muted); margin-top: 0.15rem; line-height: 1.45; }
+    .ra-more { color: var(--text-muted); font-style: italic; list-style: none; margin-top: 0.2rem; }
 
     /* Readable links everywhere in the Email tab + report (default blue is unreadable on dark) */
     .email-view a,
