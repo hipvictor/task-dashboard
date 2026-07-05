@@ -215,8 +215,10 @@ def build(template_dir, csv_path, date, ctw_pro, swapcache, out_path, baptism=Fa
         report.append(f"  ✓ Special-music card: title → {title!r}")
     for fn,b in blobs.items():                          # truncation guard: a complete
         present_fns={f.fn for f in pb.parse(b)}          # presentation carries its arrangement
-        assert 17 in present_fns and 18 in present_fns, \
-            f"{fn} looks truncated/incomplete (missing arrangement fields 17/18) — re-download"
+        # fn=17 (arrangement container) is present in every complete deck; fn=18 (the ordered
+        # arrangement list) is optional — single-group decks like the sermon shell omit it.
+        assert 17 in present_fns, \
+            f"{fn} looks truncated/incomplete (missing arrangement field 17) — re-download"
     entries=[(fn, blobs[fn]) for fn in sorted(blobs)]
     entries.append(("data", new_data))                 # data last, like real exports
     ppzip.write(out_path, entries)
