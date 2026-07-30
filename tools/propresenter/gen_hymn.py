@@ -36,8 +36,6 @@ def _load(n):
 pb=_load("pb"); gc=_load("gen_ctw")
 DONOR=os.path.join(_HERE,"templates","hymn-donor.pro")
 _UUIDB=re.compile(rb'[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}')
-# donor's title slide placeholders (3152 - Welcome), replaced with this hymn's three lines
-_PH_TITLE=b"Welcome"; _PH_HYMNAL=b"Worship & Song #3152"; _PH_COLOR=b"Green Hymnal"
 HYMNALS={  # code -> (line-2 hymnal name, line-3 color)
     "UMH":  ("The United Methodist Hymnal", "Blue Hymnal"),
     "TFWS": ("The Faith We Sing",           "Black Hymnal"),
@@ -99,22 +97,6 @@ def _fill_verse(cue,text):
                 if nv!=f.value: f.value=nv; f.msg=None; f.dirty=True
     walk(cue.msg)
 
-def _sub_title(cue, title, hymnal_line, color):
-    """Replace the donor title's 3 placeholder lines in place (preserves the title's format)."""
-    hit=[False]
-    def walk(fs,anc):
-        for f in fs:
-            v=f.value if isinstance(f.value,(bytes,bytearray)) else None
-            if v and _PH_COLOR in v:              # the title RTF may be misparsed -> collapse+replace
-                nv=v.replace(_PH_HYMNAL, hymnal_line.encode()).replace(_PH_COLOR, color.encode())
-                nv=nv.replace(_PH_TITLE, title.encode())
-                f.value=nv; f.msg=None; f.dirty=True
-                for a in anc: a.dirty=True;
-                hit[0]=True
-            elif f.msg is not None: walk(f.msg,anc+[f])
-    walk(cue.msg,[cue])
-    if not hit[0]: raise RuntimeError("title placeholder not found — donor changed?")
-
 def generate(title, code, num, verses, out=None):
     hymnal_name,color=HYMNALS[code]; hymnal_line=f"{hymnal_name} #{num}"
     slides=split_slides(verses)
@@ -129,7 +111,10 @@ def generate(title, code, num, verses, out=None):
     title_c=cby[_gref(the_group)]
     verse_c=cby[_gref(next(g for g in groups if _gname(g)=="Verse 2"))]
 
-    _sub_title(title_c, title, hymnal_line, color)
+    # Fill the title via the PROVEN _fill_cue path (rebuilds the text box with correct framing).
+    # A naive byte-replace here corrupts the enclosing message's length prefixes -> ProPresenter's
+    # strict decoder rejects the file (binaryDecoding error 3).
+    gc._fill_cue(title_c, [(True, f"{title}\n{hymnal_line}\n{color}")])
     new_cues=[title_c]; order=[gc._cue_uuid(title_c)]
     for _name,text in slides:
         c=gc._clone_cue(verse_c); _fill_verse(c,text)
