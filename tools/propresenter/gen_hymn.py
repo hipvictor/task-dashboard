@@ -79,17 +79,14 @@ def _set_gname(g,name):
     h=_gget(g.msg,1); n=_gget(h.msg,2); n.value=name.encode(); n.msg=None
     n.dirty=True; h.dirty=True; g.dirty=True
 
-def _clone_pair(group,cue,name):
-    """Deep-copy a (group,cue) pair with every uuid regenerated consistently (ref stays linked)."""
-    seen={}
-    def repl(m):
-        k=m.group(0)
-        if k not in seen: seen[k]=str(_uuid.uuid4()).upper().encode()
-        return seen[k]
-    c2=pb.parse(_UUIDB.sub(repl,cue.raw_full))[0]
-    g2=pb.parse(_UUIDB.sub(repl,group.raw_full))[0]
-    _set_gname(g2,name)
-    return g2,c2
+def _new_pres_uuid(root):
+    """Give the presentation a fresh uuid (field 2) so it doesn't collide with the donor deck
+    already in the library — a duplicate presentation uuid makes ProPresenter ignore the import."""
+    f2=_gget(root,2)
+    if f2 is None: return
+    u=_gget(f2.msg,1)
+    if u is not None:
+        u.value=str(_uuid.uuid4()).upper().encode(); u.msg=None; u.dirty=True; f2.dirty=True
 
 def _fill_verse(cue,text):
     """Fill the visible text box with the (≤4-line) stanza and FORCE 55pt (\\fs110)."""
@@ -125,22 +122,31 @@ def generate(title, code, num, verses, out=None):
     root=pb.parse(open(DONOR,'rb').read())
     groups=[x for x in root if x.fn==12]; cues=[x for x in root if x.fn==13]
     cby={_UUIDB.search(c.raw_full).group(0).decode():c for c in cues}
-    title_g=next(g for g in groups if _gname(g)=="Intro"); title_c=cby[_gref(title_g)]
-    verse_g=next(g for g in groups if _gname(g)=="Verse 2"); verse_c=cby[_gref(verse_g)]
+    # ONE cueGroup holds every slide (like gen_ctw). Cloning GROUPS re-parses the cue-ref uuids,
+    # which mis-split and corrupt on re-encode (SwiftProtobuf rejects the file) — so instead we
+    # clone only CUES and rebuild the group's cue-ref list FRESH from uuid strings.
+    the_group=next(g for g in groups if _gname(g)=="Intro")
+    title_c=cby[_gref(the_group)]
+    verse_c=cby[_gref(next(g for g in groups if _gname(g)=="Verse 2"))]
 
-    _sub_title(title_c, title, hymnal_line, color); _set_gname(title_g,"Title")
-    new_groups=[title_g]; new_cues=[title_c]
-    for name,text in slides:
-        g2,c2=_clone_pair(verse_g,verse_c,name); _fill_verse(c2,text)
-        new_groups.append(g2); new_cues.append(c2)
+    _sub_title(title_c, title, hymnal_line, color)
+    new_cues=[title_c]; order=[gc._cue_uuid(title_c)]
+    for _name,text in slides:
+        c=gc._clone_cue(verse_c); _fill_verse(c,text)
+        new_cues.append(c); order.append(gc._cue_uuid(c))
+    the_group.msg=[x for x in the_group.msg if x.fn==1] + \
+                  [pb.mfield(2,[pb.sfield(1,u)]) for u in order]
+    the_group.dirty=True
+    _set_gname(the_group, title)
 
     newroot=[]; gput=cput=False
     for f in root:
         if f.fn==12:
-            if not gput: newroot+=new_groups; gput=True
+            if not gput: newroot.append(the_group); gput=True
         elif f.fn==13:
             if not cput: newroot+=new_cues; cput=True
         else: newroot.append(f)
+    _new_pres_uuid(newroot)
     presname=f"{num} - {title}".encode()
     for f in newroot:
         if f.fn==3 and isinstance(f.value,(bytes,bytearray)):
@@ -158,9 +164,15 @@ def _validate(data):
     assert 17 in fns, "missing arrangement (fn17)"
     cu=[_UUIDB.search(c.raw_full).group(0).decode() for c in cues]
     assert len(cu)==len(set(cu)), "duplicate cue uuid"
+    cueset=set(cu); refs=[]
     for g in groups:
-        assert _gref(g) in set(cu), f"group {_gname(g)!r} refs missing cue"
-    assert len(groups)==len(cues), f"{len(groups)} groups vs {len(cues)} cues"
+        for r in g.msg:
+            if r.fn==2:
+                m=_UUIDB.search(r.raw_full)
+                if m: refs.append(m.group(0).decode())
+    assert refs, "group has no cue refs"
+    assert not [r for r in refs if r not in cueset], "cue-group ref with no matching cue"
+    assert len(refs)==len(cues), f"{len(refs)} refs vs {len(cues)} cues"
 
 if __name__=="__main__":
     ap=argparse.ArgumentParser()
