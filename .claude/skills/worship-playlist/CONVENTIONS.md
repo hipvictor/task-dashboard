@@ -81,3 +81,22 @@ the church's actual slides, then re-text. The canonical spec:
   3. Hymnal color: **Blue Hymnal** (UMH) · **Black Hymnal** (TFWS) · **Green Hymnal** (W&S).
 - Always rename the presentation's internal name (field 3) to the hymn title so no donor
   metadata (e.g. "3152 - Welcome") leaks into the imported deck.
+
+## Hymn/deck generation gotchas (each cost a debugging cycle — ProPresenter's SwiftProtobuf
+decoder is STRICT; our lenient `pb.py` round-trips things it rejects with `binaryDecoding
+error 3`, so "round-trips in pb" ≠ "imports")
+- **Never byte-replace text inside a nested protobuf message.** Some text fields mis-parse as
+  sub-messages; replacing bytes changes the inner length but not the length prefixes → strict
+  decode fails. Fill text via `gen_ctw._fill_cue` (rebuilds the box + reframes correctly).
+- **Never clone slide-GROUPS by re-parsing their bytes.** A cueGroup's cue-ref uuid mis-splits
+  on re-parse and corrupts on re-encode. Use ONE cueGroup and build its cue-ref list FRESH
+  (`pb.mfield(2,[pb.sfield(1,uuid)])`); clone only CUES (`_clone_cue`). This is the `gen_ctw`
+  pattern — proven to import.
+- **Regenerate the presentation uuid (field 2)** on any cloned-donor deck. A duplicate
+  presentation uuid makes ProPresenter treat the import as the donor already in the library
+  (slides appear empty / import ignored).
+- **Deliver decks ZIPPED.** ProPresenter names an imported `.pro` from its FILENAME, and file
+  downloads strip punctuation (a `453 - Title` becomes `453  Title`, `Christ's`→`Christs`). A
+  zip preserves the exact inner filename through extraction, so the import lands named right.
+- Validate before shipping: round-trip (`pb.encode(pb.parse(x))==x`), every cue-ref resolves,
+  arrangement field 17 present, and NO leftover donor text (search for the donor's title/number).
