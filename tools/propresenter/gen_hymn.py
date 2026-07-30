@@ -6,6 +6,16 @@ title slide + one slide per verse from existing slide-groups, then DROP the unus
 (and their cues). No uuid regeneration — every kept slide keeps its own canonical uuid, so the
 group->cue links and arrangement stay intact. Requires: #verses <= donor's verse-slide count.
 
+CANONICAL HYMN SPEC — see `.claude/skills/worship-playlist/CONVENTIONS.md` ("Hymn slide spec"):
+  · 4 lyric lines per slide (split longer stanzas into 4+4 half-stanzas).
+  · Verse layout (lower third): Helvetica Bold 55pt (\\fs110); black bar h370 @ 75% opacity;
+    text box 1620x325 at x150,y732.7, centered. (Geometry inherited from donor; font forced 55pt.)
+  · 3-line title slide: Title / hymnal+number / hymnal color (UMH=Blue, TFWS=Black, W&S=Green).
+  · Rename presentation field-3 to the hymn title so no donor metadata leaks in.
+When #slides exceeds the donor's group count (e.g. a 4-verse hymn split 4+4 = 8+title), clone a
+donor (group,cue) pair per slide with all uuids regenerated (keeping each group->cue ref linked),
+as in the "Called as Partners in Christ's Service" build.
+
 Hymn-deck model (reverse-engineered): display order = the sequence of top-level fn=12 groups;
 each group has a header (fn=1, name at /1/2) + an fn=2 ref carrying its cue's uuid; the cues are
 top-level fn=13. The arrangement (fn=17/18) does not reference cue/group uuids.

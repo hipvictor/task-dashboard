@@ -62,3 +62,21 @@ in the committed template — only fetch the week's VARIABLE files.
 Jonathan→`L3 - JONATHAN PERRY`, Aaron→`L3 - AARON MANES`, Cathy→`L3 - CATHY`,
 Jack Knagg→`L3 - Jack Knagg`. Generic fallbacks: `L3 - Song Title`,
 `L3 - Community Prayer Name`. Welcome defaults to JONATHAN PERRY when col 8 is "Jonathan".
+
+## Hymn slide spec (for hymns generated with `gen_hymn.py`, not in the library)
+Build by cloning a real library hymn deck (e.g. `3152 - Welcome.pro`) so slide geometry matches
+the church's actual slides, then re-text. The canonical spec:
+- **Stanza breaks:** 4 lyric lines per slide — a full 4-line stanza, or split a longer stanza
+  into half-stanzas (4+4). Never more than 4 lines on a slide. (Odd counts: split as sensible;
+  default 4-then-remainder.)
+- **Verse slide layout (lower third):** black background bar **height 370px, opacity 75%**;
+  **Helvetica Bold 55pt** (`\fs110` in RTF); text bounding box **1620 × 325px at x150, y732.7**,
+  centered horizontally + vertically. (Geometry is inherited from the donor deck; font is forced
+  to 55pt. If a donor's box differs from these px, set the element bounds explicitly.)
+- **Title slide — 3 lines:**
+  1. Hymn Title
+  2. Hymnal + number: UMH → `The United Methodist Hymnal #NNN`; TFWS → `The Faith We Sing #NNNN`;
+     W&S → `Worship & Song #NNNN`.
+  3. Hymnal color: **Blue Hymnal** (UMH) · **Black Hymnal** (TFWS) · **Green Hymnal** (W&S).
+- Always rename the presentation's internal name (field 3) to the hymn title so no donor
+  metadata (e.g. "3152 - Welcome") leaks into the imported deck.
