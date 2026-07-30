@@ -1,113 +1,171 @@
-"""Format provided hymn lyrics into a ProPresenter hymn deck (for hymns not in the library).
+"""Format provided hymn lyrics into a ProPresenter hymn deck, built to the church spec.
 
-FORMATTER, not author: verses are provided (a hymnal's published text). Rather than synthesize
-slides (risky uuid surgery), this takes a donor library hymn deck and re-texts it: fill the
-title slide + one slide per verse from existing slide-groups, then DROP the unused verse groups
-(and their cues). No uuid regeneration — every kept slide keeps its own canonical uuid, so the
-group->cue links and arrangement stay intact. Requires: #verses <= donor's verse-slide count.
+FORMATTER, not author: verses are provided (a hymnal's published text). This clones a real
+library hymn deck (`templates/hymn-donor.pro` = the church's 3152 - Welcome deck) so slide
+geometry matches the church's actual slides, then re-texts it — one cloned (group, cue) pair
+per slide with all uuids regenerated (each group->cue ref stays linked; the fn=17/18 arrangement
+does not reference cue/group uuids, so it stays valid). Handles any slide count.
 
-CANONICAL HYMN SPEC — see `.claude/skills/worship-playlist/CONVENTIONS.md` ("Hymn slide spec"):
-  · 4 lyric lines per slide (split longer stanzas into 4+4 half-stanzas).
-  · Verse layout (lower third): Helvetica Bold 55pt (\\fs110); black bar h370 @ 75% opacity;
-    text box 1620x325 at x150,y732.7, centered. (Geometry inherited from donor; font forced 55pt.)
-  · 3-line title slide: Title / hymnal+number / hymnal color (UMH=Blue, TFWS=Black, W&S=Green).
-  · Rename presentation field-3 to the hymn title so no donor metadata leaks in.
-When #slides exceeds the donor's group count (e.g. a 4-verse hymn split 4+4 = 8+title), clone a
-donor (group,cue) pair per slide with all uuids regenerated (keeping each group->cue ref linked),
-as in the "Called as Partners in Christ's Service" build.
+CANONICAL HYMN SPEC (also in .claude/skills/worship-playlist/CONVENTIONS.md):
+  · 4 lyric lines per slide — a full 4-line stanza, or a longer stanza split into 4+4 halves.
+  · Verse layout (inherited from the donor's lower-third slide): black bar h370 @ 75% opacity,
+    text box 1620x325 @ x150/y732.7 centered; font FORCED to Helvetica Bold 55pt (\\fs110).
+  · 3-line title slide: Title / hymnal+number / hymnal color.
+  · Presentation name (field 3) set to "<number> - <Title>" so no donor metadata leaks in.
 
-Hymn-deck model (reverse-engineered): display order = the sequence of top-level fn=12 groups;
-each group has a header (fn=1, name at /1/2) + an fn=2 ref carrying its cue's uuid; the cues are
-top-level fn=13. The arrangement (fn=17/18) does not reference cue/group uuids.
+Input file: line 1 = hymn title; line 2 = "<HYMNAL> <number>" (UMH | TFWS | W&S); blank line;
+then verses separated by blank lines. Example:
+    Called as Partners in Christ's Service
+    UMH 453
 
-Input file: title block, blank line, then verses separated by blank lines. Example:
-    Where Charity and Love Prevail
-    United Methodist Hymnal #549
+    Called as partners in Christ's service
+    Called to ministries of grace
+    ... (8 lines)
 
-    Where charity and love prevail,
-    there God is ever found; ...
+    Christ's example, Christ's inspiring
+    ... (next verse)
 
-Usage: gen_hymn.py <lyrics.txt> --out "<549 - ....pro>" [--template <donor hymn .pro>]
+Usage: gen_hymn.py <lyrics.txt> --out "<453 - Title.pro>"
 """
-import sys, os, re, argparse, importlib.util
+import sys, os, re, argparse, importlib.util, uuid as _uuid
 
 _HERE=os.path.dirname(__file__)
 def _load(n):
     s=importlib.util.spec_from_file_location(n, os.path.join(_HERE,n+".py"))
     m=importlib.util.module_from_spec(s); s.loader.exec_module(m); return m
 pb=_load("pb"); gc=_load("gen_ctw")
-DEFAULT_TPL=os.path.join(_HERE,"templates","communion","3179 - The Risen Christ.pro")
-_UUID=re.compile(rb'[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}')
+DONOR=os.path.join(_HERE,"templates","hymn-donor.pro")
+_UUIDB=re.compile(rb'[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}')
+# donor's title slide placeholders (3152 - Welcome), replaced with this hymn's three lines
+_PH_TITLE=b"Welcome"; _PH_HYMNAL=b"Worship & Song #3152"; _PH_COLOR=b"Green Hymnal"
+HYMNALS={  # code -> (line-2 hymnal name, line-3 color)
+    "UMH":  ("The United Methodist Hymnal", "Blue Hymnal"),
+    "TFWS": ("The Faith We Sing",           "Black Hymnal"),
+    "W&S":  ("Worship & Song",              "Green Hymnal"),
+}
 
-def parse_lyrics(text):
+def parse_input(text):
     blocks=[b.strip("\n") for b in re.split(r'\n[ \t]*\n', text.replace('\r','')) if b.strip()]
-    if len(blocks)<2: raise ValueError("need a title block, a blank line, then >=1 verse block")
-    return blocks[0].strip(), blocks[1:]
+    if len(blocks)<2: raise ValueError("need: title line, hymnal line, blank line, then verses")
+    head=[l.strip() for l in blocks[0].splitlines() if l.strip()]
+    if len(head)<2: raise ValueError("first block must be: line1=title, line2='<HYMNAL> <number>'")
+    title=head[0]
+    m=re.match(r'(UMH|TFWS|W&S)\s+#?(\w+)', head[1], re.I)
+    if not m: raise ValueError(f"hymnal line {head[1]!r} must be 'UMH 453' / 'TFWS 2130' / 'W&S 3152'")
+    code=m.group(1).upper(); num=m.group(2)
+    verses=[[l for l in blk.splitlines() if l.strip()] for blk in blocks[1:]]
+    return title, code, num, verses
 
+def split_slides(verses):
+    """4 lines per slide; longer stanzas split into 4+4… half-stanzas."""
+    out=[]
+    for i,lines in enumerate(verses,1):
+        chunks=[lines[j:j+4] for j in range(0,len(lines),4)]
+        for k,ch in enumerate(chunks):
+            label=f"Verse {i}" if k==0 else f"Verse {i} (cont.)"
+            out.append((label,"\n".join(ch)))
+    return out
+
+def _gget(m,f):
+    for c in m:
+        if c.fn==f: return c
 def _gname(g):
-    h=gc._get(g.msg,1)
-    if h and h.msg:
-        n=gc._get(h.msg,2)
-        if n and n.value: return n.value.decode('latin1')
-    return ""
-def _gref(g):                       # cue uuid this group points at (its fn=2 ref)
-    r=gc._get(g.msg,2)
-    m=_UUID.search(r.raw_full) if r else None
+    h=_gget(g.msg,1); n=_gget(h.msg,2) if h and h.msg else None
+    return n.value.decode('latin1') if n and n.value else ""
+def _gref(g):
+    r=_gget(g.msg,2); m=_UUIDB.search(r.raw_full) if r else None
     return m.group(0).decode() if m else None
+def _set_gname(g,name):
+    h=_gget(g.msg,1); n=_gget(h.msg,2); n.value=name.encode(); n.msg=None
+    n.dirty=True; h.dirty=True; g.dirty=True
 
-def generate(title, verses, template=DEFAULT_TPL, out=None):
-    root=pb.parse(open(template,'rb').read())
-    groups=[f for f in root if f.fn==12]
-    cues  ={gc._cue_uuid(c): c for c in root if c.fn==13}
-    title_group=groups[0]
-    verse_groups=[g for g in groups[1:] if _gname(g).lower().startswith("verse")]
-    other_groups=[g for g in groups[1:] if not _gname(g).lower().startswith("verse")]
-    if len(verses)>len(verse_groups):
-        raise ValueError(f"donor has {len(verse_groups)} verse slides, need {len(verses)} — "
-                         f"pick a donor with more verses")
+def _clone_pair(group,cue,name):
+    """Deep-copy a (group,cue) pair with every uuid regenerated consistently (ref stays linked)."""
+    seen={}
+    def repl(m):
+        k=m.group(0)
+        if k not in seen: seen[k]=str(_uuid.uuid4()).upper().encode()
+        return seen[k]
+    c2=pb.parse(_UUIDB.sub(repl,cue.raw_full))[0]
+    g2=pb.parse(_UUIDB.sub(repl,group.raw_full))[0]
+    _set_gname(g2,name)
+    return g2,c2
 
-    gc._fill_cue(cues[_gref(title_group)], [(True, title)])   # title slide
-    used=[title_group]
-    for i,v in enumerate(verses):
-        g=verse_groups[i]; gc._fill_cue(cues[_gref(g)], [(True, v)]); used.append(g)
-    used+=other_groups                                        # keep Blank etc.
-    drop_groups=[g for g in verse_groups[len(verses):]]
-    keep_refs={_gref(g) for g in groups if g not in drop_groups}
-    # preserve original top-level order, minus dropped groups and their cues
-    keep_groups=[g for g in groups if g not in drop_groups]
-    keep_cues=[c for u,c in cues.items() if u in keep_refs]
-    kc_by_u={gc._cue_uuid(c):c for c in keep_cues}
-    ordered_cues=[kc_by_u[_gref(g)] for g in keep_groups if _gref(g) in kc_by_u]
+def _fill_verse(cue,text):
+    """Fill the visible text box with the (≤4-line) stanza and FORCE 55pt (\\fs110)."""
+    gc._fill_cue(cue,[(True,text)])
+    def walk(fs):
+        for f in fs:
+            if f.msg is not None: walk(f.msg)
+            elif isinstance(f.value,(bytes,bytearray)) and b'rtf1' in f.value and b'\\cf2' in f.value:
+                nv=re.sub(rb"\\fs\d+", b"\\\\fs110", f.value)
+                if nv!=f.value: f.value=nv; f.msg=None; f.dirty=True
+    walk(cue.msg)
+
+def _sub_title(cue, title, hymnal_line, color):
+    """Replace the donor title's 3 placeholder lines in place (preserves the title's format)."""
+    hit=[False]
+    def walk(fs,anc):
+        for f in fs:
+            v=f.value if isinstance(f.value,(bytes,bytearray)) else None
+            if v and _PH_COLOR in v:              # the title RTF may be misparsed -> collapse+replace
+                nv=v.replace(_PH_HYMNAL, hymnal_line.encode()).replace(_PH_COLOR, color.encode())
+                nv=nv.replace(_PH_TITLE, title.encode())
+                f.value=nv; f.msg=None; f.dirty=True
+                for a in anc: a.dirty=True;
+                hit[0]=True
+            elif f.msg is not None: walk(f.msg,anc+[f])
+    walk(cue.msg,[cue])
+    if not hit[0]: raise RuntimeError("title placeholder not found — donor changed?")
+
+def generate(title, code, num, verses, out=None):
+    hymnal_name,color=HYMNALS[code]; hymnal_line=f"{hymnal_name} #{num}"
+    slides=split_slides(verses)
+    if not slides: raise ValueError("no verses")
+    root=pb.parse(open(DONOR,'rb').read())
+    groups=[x for x in root if x.fn==12]; cues=[x for x in root if x.fn==13]
+    cby={_UUIDB.search(c.raw_full).group(0).decode():c for c in cues}
+    title_g=next(g for g in groups if _gname(g)=="Intro"); title_c=cby[_gref(title_g)]
+    verse_g=next(g for g in groups if _gname(g)=="Verse 2"); verse_c=cby[_gref(verse_g)]
+
+    _sub_title(title_c, title, hymnal_line, color); _set_gname(title_g,"Title")
+    new_groups=[title_g]; new_cues=[title_c]
+    for name,text in slides:
+        g2,c2=_clone_pair(verse_g,verse_c,name); _fill_verse(c2,text)
+        new_groups.append(g2); new_cues.append(c2)
 
     newroot=[]; gput=cput=False
     for f in root:
         if f.fn==12:
-            if not gput: newroot.extend(keep_groups); gput=True
+            if not gput: newroot+=new_groups; gput=True
         elif f.fn==13:
-            if not cput: newroot.extend(ordered_cues); cput=True
-        else:
-            newroot.append(f)
+            if not cput: newroot+=new_cues; cput=True
+        else: newroot.append(f)
+    presname=f"{num} - {title}".encode()
+    for f in newroot:
+        if f.fn==3 and isinstance(f.value,(bytes,bytearray)):
+            f.value=presname; f.msg=None; f.dirty=True
     data=pb.encode(newroot)
     _validate(data)
     if out: open(out,'wb').write(data)
-    return data, len(verses)
+    return data, len(slides), f"{num} - {title}"
 
 def _validate(data):
     assert pb.encode(pb.parse(data))==data, "hymn deck not round-trip stable"
     root=pb.parse(data)
-    groups=[f for f in root if f.fn==12]; cues=[f for f in root if f.fn==13]
-    cu=[gc._cue_uuid(c) for c in cues]
+    groups=[x for x in root if x.fn==12]; cues=[x for x in root if x.fn==13]
+    fns={f.fn for f in root}
+    assert 17 in fns, "missing arrangement (fn17)"
+    cu=[_UUIDB.search(c.raw_full).group(0).decode() for c in cues]
     assert len(cu)==len(set(cu)), "duplicate cue uuid"
-    cueset=set(cu)
     for g in groups:
-        assert _gref(g) in cueset, f"group {_gname(g)!r} refs missing cue {_gref(g)}"
+        assert _gref(g) in set(cu), f"group {_gname(g)!r} refs missing cue"
     assert len(groups)==len(cues), f"{len(groups)} groups vs {len(cues)} cues"
 
 if __name__=="__main__":
     ap=argparse.ArgumentParser()
-    ap.add_argument("lyrics"); ap.add_argument("--template", default=DEFAULT_TPL)
-    ap.add_argument("--out", required=True)
+    ap.add_argument("lyrics"); ap.add_argument("--out", required=True)
     a=ap.parse_args()
-    title, verses = parse_lyrics(open(a.lyrics, encoding='utf-8').read())
-    _, n = generate(title, verses, a.template, a.out)
-    print(f"wrote {a.out}: title + {n} verse slide(s)  (title={title!r})")
+    title, code, num, verses = parse_input(open(a.lyrics, encoding='utf-8').read())
+    _, n, name = generate(title, code, num, verses, a.out)
+    print(f"wrote {a.out}: title + {n} lyric slide(s)  ({name!r})")

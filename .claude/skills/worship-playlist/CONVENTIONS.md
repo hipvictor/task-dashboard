@@ -60,7 +60,8 @@ in the committed template — only fetch the week's VARIABLE files.
 
 ## Known name → L3 (extend as learned)
 Jonathan→`L3 - JONATHAN PERRY`, Aaron→`L3 - AARON MANES`, Cathy→`L3 - CATHY`,
-Jack Knagg→`L3 - Jack Knagg`. Generic fallbacks: `L3 - Song Title`,
+Jack Knagg→`L3 - Jack Knagg`, Jenny→`L3 - JENNY BATES`, Kyungrae Cho→`L3 - KYUNGRAE CHO`.
+Generic fallbacks: `L3 - Song Title`,
 `L3 - Community Prayer Name`. Welcome defaults to JONATHAN PERRY when col 8 is "Jonathan".
 
 ## Hymn slide spec (for hymns generated with `gen_hymn.py`, not in the library)
