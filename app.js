@@ -1073,6 +1073,39 @@ function setTheme(theme) {
     }
   }
 
+
+  // Add straight onto a target's list, from the card itself.
+  async function addToList(targetId, relation) {
+    const input = document.getElementById('list-add-' + targetId);
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    const { error } = await sb.from('tasks').insert({
+      name: text,
+      status: relation === 'waiting_on' ? 'delegate' : 'agenda',
+      relation: relation,
+      agenda_target_id: targetId,
+      domain: taskDomain,
+      capture_notes: text
+    });
+    if (error) { showToast('Add failed: ' + error.message, { type: 'error' }); return; }
+    showToast(relation === 'waiting_on' ? 'Added to waiting-on' : 'Added to list');
+    await loadLists();
+    await loadTasks();
+  }
+
+  function listAddBoxHTML(targetId) {
+    return `
+      <div class="list-add-row">
+        <input type="text" id="list-add-${targetId}" class="list-add-input"
+               placeholder="Add an item…"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();addToList('${targetId}','agenda');}">
+        <button class="route-btn" onclick="addToList('${targetId}','agenda')">To raise</button>
+        <button class="route-btn" onclick="addToList('${targetId}','waiting_on')">Waiting on</button>
+      </div>`;
+  }
+
   function listsTargetCardHTML(target, items) {
     const raise = items.filter(i => i.relation !== 'waiting_on');
     const waiting = items.filter(i => i.relation === 'waiting_on');
@@ -1100,6 +1133,7 @@ function setTheme(theme) {
             ? waiting.map(i => listItemHTML(i)).join('')
             : '<div class="review-empty">Nothing outstanding.</div>'}
         </div>
+        ${listAddBoxHTML(target.id)}
       </div>
     `;
   }
@@ -2154,14 +2188,29 @@ function setTheme(theme) {
     showToast('Task added');
 
     try {
-      const { error, data } = await sb
-        .from('tasks')
-        .insert({
-          name: name,
-          status: pool,
-          domain: taskDomain,
-          capture_notes: name
-        });
+      // "@name ..." routes to that person's / meeting's list instead of a pool.
+      // Undated mentions become agenda items; the RPC strips the @token from the
+      // title and resolves aliases, so @kathy and @cathy reach the same target.
+      let error, data;
+      if (/@[A-Za-z][A-Za-z0-9._-]{1,40}/.test(name)) {
+        ({ error, data } = await sb.rpc('capture_with_mentions', {
+          p_text: name,
+          p_relation: 'agenda',
+          p_domain: taskDomain,
+          p_capture_notes: name,
+          p_source_note: 'quick-add'
+        }));
+        if (!error) { await loadLists(); }
+      } else {
+        ({ error, data } = await sb
+          .from('tasks')
+          .insert({
+            name: name,
+            status: pool,
+            domain: taskDomain,
+            capture_notes: name
+          }));
+      }
 
       if (error) {
         // Revert on error
