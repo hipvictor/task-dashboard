@@ -111,6 +111,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     hideShortcutHelp();
     hideSearch();
+    closeListPicker();
     const dropdowns = document.querySelectorAll('[id$="-dropdown"].open');
     dropdowns.forEach(dd => dd.classList.remove('open'));
     return;
@@ -129,9 +130,9 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === '/') {
     e.preventDefault();
     toggleSearch();
-  } else if (e.key >= '1' && e.key <= '5') {
+  } else if (e.key >= '1' && e.key <= '6') {
     e.preventDefault();
-    const views = ['tasks', 'home', 'briefing', 'review', 'email'];
+    const views = ['tasks', 'home', 'briefing', 'review', 'email', 'lists'];
     const view = views[parseInt(e.key) - 1];
     if (view) switchView(view);
   }
@@ -281,6 +282,7 @@ function setTheme(theme) {
 
     await surfaceDeferredTasks();
     await loadTasks();
+    await loadLists();
     await loadAgenda();
     renderCoachingCard();
 
@@ -289,18 +291,20 @@ function setTheme(theme) {
       switchView('review');
     } else if (location.hash === '#email') {
       switchView('email');
+    } else if (location.hash === '#lists') {
+      switchView('lists');
     }
   }
 
   // ── View Switching ──
   let taskDomain = 'work'; // Tasks tab = work, Home tab = home (both reuse the tasks-view)
   function switchView(viewName) {
-    ['tasks-view', 'briefing-view', 'review-view', 'email-view']
+    ['tasks-view', 'briefing-view', 'review-view', 'email-view', 'lists-view']
       .forEach(v => document.getElementById(v).classList.remove('active'));
     const btns = document.querySelectorAll('.tab-btn');
     btns.forEach(btn => btn.classList.remove('active'));
 
-    // tab order: Tasks(0) Home(1) Briefing(2) Proposals(3) Email(4)
+    // tab order: Tasks(0) Home(1) Briefing(2) Proposals(3) Email(4) Lists(5)
     if (viewName === 'tasks' || viewName === 'home') {
       taskDomain = viewName === 'home' ? 'home' : 'work';
       document.getElementById('tasks-view').classList.add('active');
@@ -318,6 +322,10 @@ function setTheme(theme) {
       document.getElementById('email-view').classList.add('active');
       btns[4].classList.add('active');
       loadEmailQueue();
+    } else if (viewName === 'lists') {
+      document.getElementById('lists-view').classList.add('active');
+      btns[5].classList.add('active');
+      loadLists();
     }
   }
 
@@ -642,6 +650,7 @@ function setTheme(theme) {
   }
 
   function renderReview() {
+    closeListPicker(); // the picker lives inside the list markup we're replacing
     const base = reviewTasks.filter(reviewMatches);
     const yours = base.filter(t => !isOthersTask(t));
     const others = base.filter(t => isOthersTask(t));
@@ -683,6 +692,9 @@ function setTheme(theme) {
     const routeBtns = REVIEW_ROUTES.map(r =>
       `<button class="route-btn${r.danger ? ' danger' : ''}" onclick="routeProposal('${task.id}', '${r.dest}')">${r.label}</button>`
     ).join('');
+    // Routing to a list needs a destination target, so this one opens a picker
+    // rather than acting directly (see openListPicker).
+    const listBtn = `<button class="route-btn list-route" onclick="openListPicker(event, '${task.id}')" title="Put this on a person's or meeting's list">List…</button>`;
 
     return `
       <div class="review-item${checked}" data-id="${task.id}">
@@ -691,7 +703,7 @@ function setTheme(theme) {
           <div class="review-item-name" onclick="openReviewEditor('${task.id}', event)" title="Click to edit">${escapeHTML(task.name)}</div>
           ${tags.length ? `<div class="review-item-meta">${tags.join('')}</div>` : ''}
           ${source}
-          <div class="route-bar">${routeBtns}${homeBtn}</div>
+          <div class="route-bar">${routeBtns}${listBtn}${homeBtn}</div>
         </div>
       </div>
     `;
@@ -917,6 +929,486 @@ function setTheme(theme) {
     }
   }
 
+  // ── Lists View ──
+  // Running lists kept per person and per recurring meeting. Everything here
+  // renders from the database at runtime; no target or item text is hardcoded.
+  //   relation 'agenda'     — things you raise with them. Done when *said*.
+  //   relation 'waiting_on' — things they owe you. Done when *delivered*, and
+  //                           carries a check_back_on tripwire.
+  // Source of truth is the agenda_lists view (every non-done task that has an
+  // agenda_target_id, joined to its target). Targets come from agenda_targets.
+  let agendaTargets = [];
+  let agendaItems = [];
+  let listsShowAll = false;
+  let listsSearch = '';
+  let listsFocusTargetId = null;
+
+  async function loadAgendaTargets() {
+    if (agendaTargets.length) return agendaTargets;
+    const { data, error } = await sb
+      .from('agenda_targets')
+      .select('*')
+      .eq('active', true)
+      .order('name');
+    if (error) {
+      console.error('Error loading agenda targets:', error);
+      return agendaTargets;
+    }
+    agendaTargets = data || [];
+    // Derive staff quick-tags from live data (first names of person targets).
+    STAFF_TAGS = Array.from(new Set(
+      (agendaTargets || [])
+        .filter(t => t.kind === 'person' && t.name)
+        .map(t => String(t.name).trim().split(/\s+/)[0])
+        .filter(Boolean)
+    ));
+    return agendaTargets;
+  }
+
+  async function loadAgendaItems() {
+    const { data, error } = await sb.from('agenda_lists').select('*');
+    if (error) {
+      console.error('Error loading agenda lists:', error);
+      return agendaItems;
+    }
+    agendaItems = data || [];
+    return agendaItems;
+  }
+
+  async function loadLists() {
+    const container = document.getElementById('lists-container');
+    if (container && !agendaItems.length) container.innerHTML = '<div class="review-empty">Loading…</div>';
+    try {
+      await loadAgendaTargets();
+      await loadAgendaItems();
+      renderLists();
+      renderBenchAgendaRollup();
+    } catch (e) {
+      console.error('Error loading lists:', e);
+      if (container) container.innerHTML = '<div class="review-empty">Error loading lists</div>';
+    }
+  }
+
+  // Every active target, plus any inactive target that still holds items, so
+  // nothing silently disappears from view.
+  function listsAllTargets() {
+    const byId = new Map(agendaTargets.map(t => [t.id, t]));
+    agendaItems.forEach(i => {
+      if (!byId.has(i.agenda_target_id)) {
+        byId.set(i.agenda_target_id, {
+          id: i.agenda_target_id,
+          name: i.target_name,
+          slug: i.target_slug,
+          kind: i.target_kind,
+          aliases: [],
+        });
+      }
+    });
+    return [...byId.values()].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+
+  // target id -> items, overdue check-backs first, then oldest first.
+  function groupAgendaItems() {
+    const byTarget = {};
+    agendaItems.forEach(i => {
+      (byTarget[i.agenda_target_id] = byTarget[i.agenda_target_id] || []).push(i);
+    });
+    Object.values(byTarget).forEach(list => list.sort((a, b) => {
+      const o = (b.overdue_checkback ? 1 : 0) - (a.overdue_checkback ? 1 : 0);
+      return o !== 0 ? o : (a.added_on || '').localeCompare(b.added_on || '');
+    }));
+    return byTarget;
+  }
+
+  function handleListsSearch(v) { listsSearch = (v || '').toLowerCase().trim(); renderLists(); }
+
+  function listsMatches(target) {
+    if (!listsSearch) return true;
+    const hay = [target.name, target.slug, (target.aliases || []).join(' ')]
+      .filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(listsSearch);
+  }
+
+  // Empty targets are hidden by default so the tab stays short; this reveals
+  // them so an item can be added to someone with nothing on their card yet.
+  function toggleListsShowAll() {
+    listsShowAll = !listsShowAll;
+    const btn = document.getElementById('lists-showall-toggle');
+    if (btn) {
+      btn.classList.toggle('active', listsShowAll);
+      btn.textContent = listsShowAll ? 'Only active' : 'Show all';
+    }
+    renderLists();
+  }
+
+  function renderLists() {
+    const container = document.getElementById('lists-container');
+    if (!container) return;
+
+    const byTarget = groupAgendaItems();
+    const targets = listsAllTargets().filter(t => {
+      if (!listsMatches(t)) return false;
+      if (listsShowAll || listsSearch) return true;
+      if (listsFocusTargetId === t.id) return true;
+      return (byTarget[t.id] || []).length > 0;
+    });
+
+    if (!targets.length) {
+      container.innerHTML = listsSearch
+        ? '<div class="review-empty">No person or meeting matches that.</div>'
+        : '<div class="review-empty">No open list items right now.</div>';
+      return;
+    }
+
+    container.innerHTML = targets.map(t => listsTargetCardHTML(t, byTarget[t.id] || [])).join('');
+
+    // Opened from a bench roll-up line — highlight and scroll to that card.
+    if (listsFocusTargetId) {
+      const card = document.getElementById(`lists-card-${listsFocusTargetId}`);
+      if (card) {
+        card.classList.add('focused');
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      listsFocusTargetId = null;
+    }
+  }
+
+  function listsTargetCardHTML(target, items) {
+    const raise = items.filter(i => i.relation !== 'waiting_on');
+    const waiting = items.filter(i => i.relation === 'waiting_on');
+    const overdue = waiting.filter(i => i.overdue_checkback).length;
+    const icon = target.kind === 'meeting' ? '🗓️' : '👤';
+
+    return `
+      <div class="lists-card" id="lists-card-${target.id}" data-target-id="${target.id}">
+        <div class="lists-card-header">
+          <span class="lists-card-title">${icon} ${escapeHTML(target.name)}</span>
+          <span class="lists-card-badges">
+            ${overdue ? `<span class="tag overdue">${overdue} overdue</span>` : ''}
+            <span class="section-count">${items.length}</span>
+          </span>
+        </div>
+        <div class="lists-group">
+          <div class="lists-group-title">To raise <span class="lists-group-count">${raise.length}</span></div>
+          ${raise.length
+            ? raise.map(i => listItemHTML(i)).join('')
+            : '<div class="review-empty">Nothing to raise.</div>'}
+        </div>
+        <div class="lists-group">
+          <div class="lists-group-title">Waiting on <span class="lists-group-count">${waiting.length}</span></div>
+          ${waiting.length
+            ? waiting.map(i => listItemHTML(i)).join('')
+            : '<div class="review-empty">Nothing outstanding.</div>'}
+        </div>
+      </div>
+    `;
+  }
+
+  function listItemHTML(item) {
+    const isWaiting = item.relation === 'waiting_on';
+    const meta = [];
+
+    if (item.status === 'bench') meta.push('<span class="tag">on bench</span>');
+    if (item.due_date) {
+      const days = daysUntil(item.due_date);
+      if (days < 0) meta.push(`<span class="tag overdue">overdue ${Math.abs(days)}d</span>`);
+      else if (days <= 3) meta.push(`<span class="tag due">due in ${days}d</span>`);
+      else meta.push(`<span class="tag due">due ${formatDate(item.due_date)}</span>`);
+    }
+    if (isWaiting) {
+      if (item.check_back_on) {
+        const back = daysUntil(item.check_back_on);
+        meta.push(item.overdue_checkback
+          ? `<span class="tag overdue">check back ${Math.abs(back)}d ago</span>`
+          : `<span class="tag due">check back ${formatDate(item.check_back_on)}</span>`);
+      } else {
+        meta.push('<span class="tag">no check-back</span>');
+      }
+    }
+    if (item.age_days > 0) meta.push(`<span class="tag">${item.age_days}d old</span>`);
+
+    const notes = item.capture_notes && item.capture_notes !== item.item
+      ? `<div class="task-notes">${escapeHTML(item.capture_notes.substring(0, 120))}${item.capture_notes.length > 120 ? '…' : ''}</div>`
+      : '';
+
+    const placement = item.status === 'bench'
+      ? `<button class="route-btn" onclick="moveListItem('${item.task_id}','agenda')" title="Put it back on the list">← List</button>`
+      : `<button class="route-btn" onclick="moveListItem('${item.task_id}','bench')" title="Pull it down — it's today's work">→ Bench</button>`;
+
+    const checkBack = isWaiting
+      ? `<button class="route-btn" onclick="openCheckBackPicker(event, '${item.task_id}')">${item.check_back_on ? 'Check back…' : '+ Check back'}</button>` +
+        (item.check_back_on ? `<button class="route-btn" onclick="clearCheckBack('${item.task_id}')">Clear</button>` : '')
+      : '';
+
+    return `
+      <div class="list-item${item.overdue_checkback ? ' overdue-checkback' : ''}" data-task-id="${item.task_id}">
+        <div class="list-item-name">${escapeHTML(item.item)}</div>
+        ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
+        ${notes}
+        <div class="route-bar">
+          ${placement}
+          <button class="route-btn" onclick="moveListItem('${item.task_id}','done')">→ Done</button>
+          ${checkBack}
+        </div>
+      </div>
+    `;
+  }
+
+  // Move a list item between pools. The item stays attached to its target, so
+  // it keeps showing on the card. Mirrors moveTask's optimistic + undo shape.
+  async function moveListItem(taskId, dest) {
+    const idx = agendaItems.findIndex(i => i.task_id === taskId);
+    if (idx === -1) return;
+
+    const previousItems = JSON.parse(JSON.stringify(agendaItems));
+    const oldStatus = agendaItems[idx].status;
+
+    // Optimistic UI: update immediately
+    if (dest === 'done') agendaItems.splice(idx, 1);
+    else agendaItems[idx].status = dest;
+    renderLists();
+    renderBenchAgendaRollup();
+
+    const label = dest === 'done' ? 'Item done'
+      : dest === 'agenda' ? 'Item back on the list'
+      : `Item moved to ${dest}`;
+    showToast(label, {
+      undo: async () => {
+        agendaItems = previousItems;
+        renderLists();
+        await sb.from('tasks').update({ status: oldStatus, completed_at: null }).eq('id', taskId);
+        await loadTasks();
+      }
+    });
+
+    try {
+      const update = { status: dest };
+      if (dest === 'done') update.completed_at = new Date().toISOString();
+      const { error } = await sb.from('tasks').update(update).eq('id', taskId);
+
+      if (error) {
+        agendaItems = previousItems;
+        renderLists();
+        showToast(`Error: ${error.message}`, { type: 'error' });
+      } else {
+        await loadTasks(); // repaints the pools and the bench roll-up
+      }
+    } catch (e) {
+      agendaItems = previousItems;
+      renderLists();
+      showToast(`Error: ${e.message}`, { type: 'error' });
+    }
+  }
+
+  // Check-back tripwire on a waiting-on item: a bare date input dropped into
+  // the item's route bar. Changing it commits; Escape dismisses it.
+  function openCheckBackPicker(event, taskId) {
+    event.stopPropagation();
+    const item = agendaItems.find(i => i.task_id === taskId);
+    if (!item) return;
+    const bar = document.querySelector(`.list-item[data-task-id="${taskId}"] .route-bar`);
+    if (!bar) return;
+
+    const existing = bar.querySelector('.checkback-input');
+    if (existing) { existing.focus(); return; }
+
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.className = 'checkback-input';
+    input.value = item.check_back_on || '';
+    input.onclick = (e) => e.stopPropagation();
+    input.onchange = () => { if (input.value) updateCheckBack(taskId, input.value); };
+    input.onkeydown = (e) => { if (e.key === 'Escape') input.remove(); };
+    bar.appendChild(input);
+    input.focus();
+  }
+
+  function clearCheckBack(taskId) {
+    return updateCheckBack(taskId, null);
+  }
+
+  async function updateCheckBack(taskId, value) {
+    const idx = agendaItems.findIndex(i => i.task_id === taskId);
+    if (idx === -1) return;
+
+    const previousItems = JSON.parse(JSON.stringify(agendaItems));
+    const oldValue = agendaItems[idx].check_back_on;
+    const today = new Date().toISOString().split('T')[0];
+
+    agendaItems[idx].check_back_on = value;
+    agendaItems[idx].overdue_checkback = !!value && value < today;
+    renderLists();
+
+    showToast(value ? `Check back ${formatDate(value)}` : 'Check-back cleared', {
+      undo: async () => {
+        agendaItems = previousItems;
+        renderLists();
+        await sb.from('tasks').update({ check_back_on: oldValue }).eq('id', taskId);
+      }
+    });
+
+    try {
+      const { error } = await sb.from('tasks').update({ check_back_on: value }).eq('id', taskId);
+      if (error) {
+        agendaItems = previousItems;
+        renderLists();
+        showToast(`Error: ${error.message}`, { type: 'error' });
+      }
+    } catch (e) {
+      agendaItems = previousItems;
+      renderLists();
+      showToast(`Error: ${e.message}`, { type: 'error' });
+    }
+  }
+
+  // ── Bench roll-up ──
+  // ONE line per target, never one line per item — the bench has to stay small.
+  // Items already pulled down to the bench are excluded (they show as real
+  // bench rows instead), so a line and its rows never double-count.
+  function renderBenchAgendaRollup() {
+    const bar = document.getElementById('bench-agenda-rollup');
+    if (!bar) return;
+
+    // allTasks is the live status source; agendaItems can lag a pool move.
+    const liveStatus = new Map(allTasks.map(t => [t.id, t.status]));
+    const byTarget = groupAgendaItems();
+
+    const rows = listsAllTargets().map(target => {
+      const items = (byTarget[target.id] || []).filter(i => {
+        const status = liveStatus.has(i.task_id) ? liveStatus.get(i.task_id) : i.status;
+        return status !== 'bench' && status !== 'done';
+      });
+      const raise = items.filter(i => i.relation !== 'waiting_on').length;
+      return {
+        target,
+        raise,
+        waiting: items.length - raise,
+        overdue: items.filter(i => i.overdue_checkback).length,
+      };
+    }).filter(r => r.raise + r.waiting > 0);
+
+    if (!rows.length) { bar.innerHTML = ''; return; }
+
+    bar.innerHTML = rows.map(r => {
+      const counts = [];
+      if (r.raise) counts.push(`${r.raise} to raise`);
+      if (r.waiting) counts.push(`${r.waiting} waiting`);
+      const label = (r.target.kind === 'meeting' ? '' : '1:1 with ') + (r.target.name || '');
+      return `
+        <div class="bench-rollup-row${r.overdue ? ' overdue' : ''}" onclick="openListsTarget('${r.target.id}')" title="Open this list">
+          <span class="bench-rollup-name">${escapeHTML(label)}</span>
+          <span class="bench-rollup-counts">${escapeHTML(counts.join(', '))}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openListsTarget(targetId) {
+    listsFocusTargetId = targetId;
+    listsSearch = '';
+    const box = document.getElementById('lists-search');
+    if (box) box.value = '';
+    switchView('lists');
+  }
+
+  // ── Proposal → list picker ──
+  // A plain route button won't do here: the destination needs a target chosen,
+  // so this opens a compact inline search over agenda_targets.
+  let listPickerTaskId = null;
+
+  async function openListPicker(event, taskId) {
+    event.stopPropagation();
+    if (listPickerTaskId === taskId) { closeListPicker(); return; }
+    closeListPicker();
+
+    await loadAgendaTargets();
+    const bar = document.querySelector(`.review-item[data-id="${taskId}"] .route-bar`);
+    if (!bar) return;
+
+    listPickerTaskId = taskId;
+    const panel = document.createElement('div');
+    panel.className = 'list-picker';
+    panel.id = 'list-picker';
+    panel.onclick = (e) => e.stopPropagation();
+    panel.innerHTML = `
+      <input type="text" class="list-picker-input" id="list-picker-input" placeholder="Person or meeting…"
+        oninput="renderListPickerOptions(this.value)"
+        onkeydown="if(event.key==='Escape')closeListPicker()">
+      <div class="list-picker-options" id="list-picker-options"></div>
+    `;
+    bar.parentNode.insertBefore(panel, bar.nextSibling);
+    renderListPickerOptions('');
+    document.getElementById('list-picker-input').focus();
+  }
+
+  function renderListPickerOptions(query) {
+    const box = document.getElementById('list-picker-options');
+    if (!box) return;
+    const q = (query || '').toLowerCase().trim();
+    const matches = agendaTargets.filter(t => {
+      if (!q) return true;
+      return [t.name, t.slug, (t.aliases || []).join(' ')]
+        .filter(Boolean).join(' ').toLowerCase().includes(q);
+    }).slice(0, 8);
+
+    box.innerHTML = matches.length
+      ? matches.map(t =>
+          `<button class="list-picker-option" onclick="routeProposalToList('${t.id}')">${t.kind === 'meeting' ? '🗓️' : '👤'} ${escapeHTML(t.name)}</button>`
+        ).join('')
+      : '<div class="review-empty">No match.</div>';
+  }
+
+  function closeListPicker() {
+    const panel = document.getElementById('list-picker');
+    if (panel) panel.remove();
+    listPickerTaskId = null;
+  }
+
+  // Sets the target, the relation and the status in one update — the list
+  // equivalent of applyReviewRoute, with the same optimistic + undo shape.
+  async function routeProposalToList(targetId) {
+    const id = listPickerTaskId;
+    if (!id) return;
+    const target = agendaTargets.find(t => t.id === targetId);
+    closeListPicker();
+
+    const previous = JSON.parse(JSON.stringify(reviewTasks));
+    reviewTasks = reviewTasks.filter(t => t.id !== id);
+    reviewSelectedIds.delete(id);
+    renderReview();
+
+    showToast(`1 item → ${target ? target.name : 'list'}`, {
+      undo: async () => {
+        reviewTasks = previous;
+        renderReview();
+        await sb.from('tasks')
+          .update({ status: 'proposed', relation: null, agenda_target_id: null })
+          .eq('id', id);
+        await loadTasks();
+        await loadLists();
+      }
+    });
+
+    try {
+      const { error } = await sb.from('tasks')
+        .update({ status: 'agenda', relation: 'agenda', agenda_target_id: targetId })
+        .eq('id', id);
+
+      if (error) {
+        reviewTasks = previous;
+        renderReview();
+        showToast(`Error: ${error.message}`, { type: 'error' });
+      } else {
+        await loadTasks();
+        await loadLists();
+      }
+    } catch (e) {
+      reviewTasks = previous;
+      renderReview();
+      showToast(`Error: ${e.message}`, { type: 'error' });
+    }
+  }
+
   async function surfaceDeferredTasks() {
     try {
       await sb.rpc('surface_deferred_tasks');
@@ -963,6 +1455,11 @@ function setTheme(theme) {
 
     return allTasks.filter(t => {
       if (t.status !== status) return false;
+      // Items attached to a person/meeting list left the shop — they live on
+      // that target's card in the Lists tab, and are summarised above the Bench
+      // by renderBenchAgendaRollup(). The exception is an item deliberately
+      // pulled down to the bench, which shows as a normal bench row.
+      if (t.agenda_target_id && t.status !== 'bench') return false;
       if ((t.domain || 'work') !== taskDomain) return false;  // Tasks tab = work, Home tab = home
       if (project !== 'all' && t.project !== project) return false;
       if (tag !== 'all' && (!t.tags || !t.tags.includes(tag))) return false;
@@ -1023,6 +1520,8 @@ function setTheme(theme) {
     document.getElementById('someday-count').textContent = someday.length;
     document.getElementById('delegate-count').textContent = delegate.length + (delegateTagFilter ? '/' + getFilteredTasks('delegate').length : '');
     document.getElementById('deferred-count').textContent = deferred.length;
+
+    renderBenchAgendaRollup();
   }
 
   function renderDelegateFilterBar(delegateTasks) {
@@ -1437,7 +1936,11 @@ function setTheme(theme) {
   let editingTaskId = null;
 
   // Quick-tag system — builds clickable tag buttons from common tags + staff names
-  const STAFF_TAGS = ['Cathy', 'Judy', 'Aaron', 'Jenny', 'Rebecca', 'Terri', 'Dylan'];
+  // Staff quick-tags are loaded from the database at runtime, never hardcoded —
+  // this repo is public and real names must not appear in source. Populated from
+  // agenda_targets (kind='person') by loadAgendaTargets(); falls back to an empty
+  // list, in which case only area tags and frequently-used tags are offered.
+  let STAFF_TAGS = [];
   const AREA_TAGS = ['worship', 'finance', 'pastoral', 'operations', 'staff', 'lb', 'gff', 'congregation', 'tech', 'sermon'];
 
   function getCommonTags() {
@@ -1892,9 +2395,15 @@ function setTheme(theme) {
   }
 
   function escapeHTML(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    // Attribute-safe. This is interpolated into title="..." in several places and
+    // task text routinely contains quotes and apostrophes; the DOM textContent trick
+    // does NOT escape " or ', which let content break out of attributes.
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   async function loadAgenda() {

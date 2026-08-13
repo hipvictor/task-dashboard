@@ -6,7 +6,7 @@
   <title>Task Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Libre+Baskerville:wght@400;700&family=Source+Serif+4:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="styles.css?v=20260612a">
+  <link rel="stylesheet" href="styles.css?v=20260813a">
 </head>
 <body>
 <div class="offline-banner" id="offline-banner">You're offline — changes may not save</div>
@@ -61,6 +61,7 @@
     <button class="tab-btn" onclick="switchView('briefing')">Briefing</button>
     <button class="tab-btn" onclick="switchView('review')">Proposals</button>
     <button class="tab-btn" onclick="switchView('email')">Email</button>
+    <button class="tab-btn" onclick="switchView('lists')">Lists</button>
   </div>
   <div class="search-bar" id="search-bar"><input type="text" class="search-input" id="search-input" placeholder="Search tasks..." oninput="handleSearchInput(this.value)" onkeydown="if(event.key==='Escape')hideSearch()"></div>
   <div id="tasks-view" class="view active main">
@@ -72,6 +73,7 @@
             <span class="section-count" id="bench-count">0</span>
           </div>
           <div class="collapsible-body open" id="bench-body">
+            <div id="bench-agenda-rollup" class="bench-rollup"></div>
             <div id="bench-tasks" class="drop-zone" data-pool="bench" data-pool-label="Drop here → Bench" ondragenter="onDragEnter(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, 'bench')"></div>
           </div>
         </div>
@@ -243,6 +245,19 @@
       <div id="email-queue-list" class="email-list"></div>
     </div>
   </div>
+
+  <div id="lists-view" class="view lists-view">
+    <div class="lists-header">
+      <h2 class="lists-title">Lists</h2>
+      <div class="lists-header-actions">
+        <button class="select-toggle" id="lists-showall-toggle" onclick="toggleListsShowAll()">Show all</button>
+        <button class="refresh-btn" onclick="loadLists()" title="Refresh">🔄</button>
+      </div>
+    </div>
+    <div class="lists-intro">One card per person or meeting. <strong>To raise</strong> is what you bring them — done when said. <strong>Waiting on</strong> is what they owe you — done when delivered.</div>
+    <input type="text" class="view-search" id="lists-search" placeholder="Jump to a person or meeting…" oninput="handleListsSearch(this.value)">
+    <div id="lists-container"></div>
+  </div>
 </div>
 
 <div class="batch-bar" id="review-batch-bar">
@@ -302,10 +317,11 @@
   <div class="shortcut-row"><span>Briefing tab</span><span class="kbd-hint">3</span></div>
   <div class="shortcut-row"><span>Proposals tab</span><span class="kbd-hint">4</span></div>
   <div class="shortcut-row"><span>Email tab</span><span class="kbd-hint">5</span></div>
+  <div class="shortcut-row"><span>Lists tab</span><span class="kbd-hint">6</span></div>
   <div class="shortcut-row"><span>Close / Cancel</span><span class="kbd-hint">Esc</span></div>
   <div class="shortcut-row"><span>Show this help</span><span class="kbd-hint">?</span></div>
 </div>
 
-<script src="app.js?v=20260612a"></script>
+<script src="app.js?v=20260813a"></script>
 </body>
 </html>
