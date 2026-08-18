@@ -3162,3 +3162,98 @@
   outline: none;
   border-color: var(--accent, #6aa);
 }
+
+
+/* ─────────── Committed lane (Email tab) ─────────── */
+.email-committed-lane { margin-top: 0.9rem; }
+.email-committed-toggle {
+  width: 100%;
+  text-align: left;
+  font-family: var(--font);
+  font-size: calc(0.75rem * var(--size-scale));
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+}
+.email-committed-toggle:hover { color: var(--text); border-color: var(--accent); }
+.ec-caret { float: right; }
+.email-committed-warn {
+  font-size: calc(0.6875rem * var(--size-scale));
+  color: var(--warning);
+  padding: 0.35rem 0.75rem 0;
+}
+.email-committed-list { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.email-committed-list li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: calc(0.75rem * var(--size-scale));
+  color: var(--text-muted);
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.email-committed-list li:last-child { border-bottom: none; }
+.ec-disp {
+  flex: none;
+  text-transform: uppercase;
+  font-size: calc(0.625rem * var(--size-scale));
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  min-width: 4.5rem;
+}
+.ec-who { flex: none; color: var(--text); }
+.ec-subj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─────────── Phone: finger-sized tap targets on the Email tab ───────────
+   Apple/Google both put the floor at ~44px. The desktop buttons are ~26px,
+   which is fine with a mouse and miserable with a thumb. */
+@media (max-width: 768px) and (pointer: coarse) {
+  .email-view .disp-bar {
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .email-view .disp-btn {
+    flex: 1 1 0;
+    min-height: 44px;
+    padding: 0.6rem 0.5rem;
+    font-size: calc(0.875rem * var(--size-scale));
+    border-radius: 10px;
+  }
+  /* Task suggestions: Add / No */
+  .email-view .sugg-actions { display: flex; gap: 0.5rem; flex: none; }
+  .email-view .sugg-add,
+  .email-view .sugg-no {
+    min-height: 44px;
+    min-width: 56px;
+    padding: 0.55rem 0.9rem;
+    font-size: calc(0.8125rem * var(--size-scale));
+    border-radius: 10px;
+  }
+  .email-view .sugg { align-items: center; gap: 0.5rem; }
+  /* "More" disclosure */
+  .email-view .email-detail > summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.25rem;
+    font-size: calc(0.8125rem * var(--size-scale));
+  }
+  /* Drafted lane + committed lane */
+  .email-view .drafted-gotit,
+  .email-view .email-committed-toggle {
+    min-height: 44px;
+    padding: 0.6rem 0.9rem;
+  }
+  .email-view .email-open { min-height: 44px; display: inline-flex; align-items: center; }
+  /* Steer field for drafts */
+  .email-view .draft-note {
+    min-height: 44px;
+    font-size: calc(1rem * var(--size-scale));  /* >=16px stops iOS zoom-on-focus */
+  }
+  /* Breathing room so adjacent targets don't collide */
+  .email-view .email-item { padding: 0.85rem; margin-bottom: 0.85rem; }
+  .email-view .email-subject a { display: inline-block; padding: 0.15rem 0; }
+}

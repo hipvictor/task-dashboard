@@ -2629,6 +2629,25 @@ function setTheme(theme) {
   let emailSuggestions = {};  // queue_id -> [{id, text, added, task_id}]
   const submittedIds = new Set(); // committed via "Process now" — hidden from Needs-you until terminal (errors re-surface)
 
+  // Commit watermark, read from email_control.requested_at. Anything decided at or before this
+  // was already committed, so it stays OUT of "Needs you" across reloads — the act pass can pick
+  // it up minutes or hours later (Mac asleep) and the list never re-fills behind you.
+  // Nothing is deleted or rewritten: rows keep status 'decided' until the act pass moves them.
+  let lastCommitAt = null;
+  let showCommitted = false;
+
+  // Committed = the act pass claimed it, or it was decided before the last commit.
+  // Errors always re-surface — those need a human.
+  function isCommitted(i) {
+    if (i.status === 'error') return false;
+    if (i.status === 'processing') return true;
+    if (submittedIds.has(i.id)) return true;
+    if (i.status !== 'decided' || !i.disposition || !i.decided_at || !lastCommitAt) return false;
+    return new Date(i.decided_at) <= new Date(lastCommitAt);
+  }
+
+  function toggleCommitted() { showCommitted = !showCommitted; renderEmailQueue(); }
+
   async function loadEmailQueue() {
     const list = document.getElementById('email-queue-list');
     list.innerHTML = '<div class="email-empty">Loading…</div>';
@@ -2639,6 +2658,13 @@ function setTheme(theme) {
         .order('surfaced_at', { ascending: false });
       if (error) throw error;
       emailItems = rows || [];
+
+      // Commit watermark — survives reloads, so committed items stay cleared on the phone.
+      try {
+        const { data: ctl } = await sb.from('email_control')
+          .select('requested_at').eq('id', 1).single();
+        if (ctl) lastCommitAt = ctl.requested_at || null;
+      } catch (e) { /* non-fatal: fall back to in-session hiding */ }
 
       emailSuggestions = {};
       const ids = emailItems.map(r => r.id);
@@ -2743,8 +2769,9 @@ function setTheme(theme) {
     // Committed items drop out of "Needs you" so Jonathan can work in stages.
     // Errors re-surface so they're never lost. Search filters the list.
     const needs = emailItems.filter(i => i.status !== 'drafted'
-      && !(submittedIds.has(i.id) && i.status !== 'error')
+      && !isCommitted(i)
       && emailMatches(i));
+    const committedItems = emailItems.filter(i => i.status !== 'drafted' && isCommitted(i));
 
     const draftedSection = document.getElementById('email-drafted-section');
     const draftedList = document.getElementById('email-drafted-list');
@@ -2764,8 +2791,38 @@ function setTheme(theme) {
       : '<div class="email-empty">Inbox is clear. Nothing waiting on you.</div>';
 
     const decided = needs.filter(i => i.disposition).length;
-    document.getElementById('email-pending-note').textContent = decided ? `${decided} decided` : '';
+    const parts = [];
+    if (decided) parts.push(`${decided} decided`);
+    if (committedItems.length) parts.push(`${committedItems.length} waiting to process`);
+    document.getElementById('email-pending-note').textContent = parts.join(' \u00b7 ');
     document.getElementById('process-now-btn').disabled = decided === 0;
+    renderCommittedLane(committedItems, list);
+  }
+
+  // Quiet footer under the queue: committed items are out of your way, but not invisible.
+  function renderCommittedLane(items, listEl) {
+    let host = document.getElementById('email-committed-lane');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'email-committed-lane';
+      host.className = 'email-committed-lane';
+      listEl.parentNode.insertBefore(host, listEl.nextSibling);
+    }
+    if (!items.length) { host.innerHTML = ''; return; }
+    const waited = lastCommitAt ? Date.now() - new Date(lastCommitAt).getTime() : 0;
+    const stuck = waited > 20 * 60 * 1000;   // act pass should claim within ~60s when the Mac is awake
+    const rows = showCommitted
+      ? `<ul class="email-committed-list">${items.map(i =>
+          `<li><span class="ec-disp">${escapeHTML(i.disposition || i.status || '')}</span>` +
+          `<span class="ec-who">${escapeHTML(i.sender || i.sender_email || 'Unknown')}</span>` +
+          `<span class="ec-subj">${escapeHTML(i.subject || '(no subject)')}</span></li>`).join('')}</ul>`
+      : '';
+    host.innerHTML =
+      `<button class="email-committed-toggle" onclick="toggleCommitted()">` +
+      `${items.length} committed — waiting on the act pass <span class="ec-caret">${showCommitted ? '▴' : '▾'}</span>` +
+      `</button>` +
+      (stuck ? `<div class="email-committed-warn">Not picked up yet — is the Mac awake?</div>` : '') +
+      rows;
   }
 
   function emailItemHTML(item) {
@@ -2887,16 +2944,19 @@ function setTheme(theme) {
   }
 
   async function processNow() {
-    const committed = emailItems.filter(i => i.status === 'decided' && i.disposition && !submittedIds.has(i.id));
+    const committed = emailItems.filter(i => i.status === 'decided' && i.disposition && !isCommitted(i));
     if (!committed.length) { showToast('Nothing decided yet', { type: 'error' }); return; }
     committed.forEach(i => submittedIds.add(i.id));
     renderEmailQueue(); // committed items drop out of "Needs you" immediately
     try {
+      const stamp = new Date().toISOString();
       const { error } = await sb.from('email_control')
-        .update({ process_ready: true, requested_at: new Date().toISOString() })
+        .update({ process_ready: true, requested_at: stamp })
         .eq('id', 1);
       if (error) throw error;
-      showToast(`Processing ${committed.length} — drafts land in the Drafted lane; archived/left clear automatically`);
+      lastCommitAt = stamp;   // persisted watermark: these stay cleared even after a reload
+      renderEmailQueue();
+      showToast(`Committed ${committed.length} — cleared from your list. Drafts land in the Drafted lane.`);
       // Reconcile so drafted items + any errors surface without a manual refresh.
       setTimeout(loadEmailQueue, 12000);
       setTimeout(loadEmailQueue, 40000);
