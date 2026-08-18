@@ -3257,3 +3257,12 @@
   .email-view .email-item { padding: 0.85rem; margin-bottom: 0.85rem; }
   .email-view .email-subject a { display: inline-block; padding: 0.15rem 0; }
 }
+
+
+/* Done route on Proposals — affirmative, clearly not the Delete button */
+.route-btn.good { color: var(--success); border-color: var(--success); }
+.route-btn.good:hover { background: var(--success); border-color: var(--success); color: var(--bg); }
+@media (max-width: 768px) and (pointer: coarse) {
+  .route-bar .route-btn { min-height: 44px; padding: 0.55rem 0.8rem; }
+  .route-bar { gap: 0.5rem; flex-wrap: wrap; }
+}

@@ -635,6 +635,11 @@ function setTheme(theme) {
     { dest: 'deferred',  label: 'Defer' },
     { dest: 'someday',   label: 'Someday' },
     { dest: 'delegate',  label: 'Delegate' },
+    // Done is NOT delete. Delete discards; Done records — it keeps the row with a
+    // completed_at stamp so "what did I finish this quarter" stays answerable.
+    // Needed here because plenty of proposals arrive already handled, or get handled
+    // on the spot; without this the only way to clear them was to destroy the record.
+    { dest: 'done',      label: '\u2713 Done', good: true },
     { dest: '__delete__', label: 'Delete', danger: true },
   ];
   let reviewSelectMode = false;
@@ -690,7 +695,7 @@ function setTheme(theme) {
     const homeOn = (task.domain === 'home');
     const homeBtn = `<button class="route-btn home-toggle${homeOn ? ' active' : ''}" onclick="toggleProposalHome('${task.id}')" title="Mark Home (independent of where you route it)">⌂ Home</button>`;
     const routeBtns = REVIEW_ROUTES.map(r =>
-      `<button class="route-btn${r.danger ? ' danger' : ''}" onclick="routeProposal('${task.id}', '${r.dest}')">${r.label}</button>`
+      `<button class="route-btn${r.danger ? ' danger' : ''}${r.good ? ' good' : ''}" onclick="routeProposal('${task.id}', '${r.dest}')">${r.label}</button>`
     ).join('');
     // Routing to a list needs a destination target, so this one opens a picker
     // rather than acting directly (see openListPicker).
@@ -728,12 +733,15 @@ function setTheme(theme) {
     ids.forEach(i => reviewSelectedIds.delete(i));
     renderReview();
 
-    const label = dest === '__delete__' ? 'Deleted' : `→ ${dest.charAt(0).toUpperCase() + dest.slice(1)}`;
+    const label = dest === '__delete__' ? 'Deleted'
+      : dest === 'done' ? '✓ Done'
+      : `→ ${dest.charAt(0).toUpperCase() + dest.slice(1)}`;
     showToast(`${ids.length} ${ids.length > 1 ? 'items' : 'item'} ${label}`, {
       undo: async () => {
         reviewTasks = previous;
         renderReview();
-        await sb.from('tasks').update({ status: 'proposed' }).in('id', ids);
+        // Clear completed_at too — an undone task must not linger in the done-this-quarter record.
+        await sb.from('tasks').update({ status: 'proposed', completed_at: null }).in('id', ids);
         await loadTasks();
       }
     });
@@ -743,7 +751,11 @@ function setTheme(theme) {
       if (dest === '__delete__') {
         ({ error } = await sb.from('tasks').delete().in('id', ids));
       } else {
-        ({ error } = await sb.from('tasks').update({ status: dest }).in('id', ids));
+        // Done gets a timestamp; that column is what the quarterly "what did I finish" query reads.
+        const patch = dest === 'done'
+          ? { status: 'done', completed_at: new Date().toISOString() }
+          : { status: dest };
+        ({ error } = await sb.from('tasks').update(patch).in('id', ids));
       }
       if (error) {
         reviewTasks = previous;
