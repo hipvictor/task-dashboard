@@ -100,3 +100,27 @@ error 3`, so "round-trips in pb" ≠ "imports")
   zip preserves the exact inner filename through extraction, so the import lands named right.
 - Validate before shipping: round-trip (`pb.encode(pb.parse(x))==x`), every cue-ref resolves,
   arrangement field 17 present, and NO leftover donor text (search for the donor's title/number).
+
+## Weekly content folder & the Run Down
+The week's assets usually live in a Drive folder the user shares: the **Run Down** (AV Production
+Run Down + Worship Guide), the **CTW doc**, **hymn lyrics** for anything not in the library, a
+**children's-time liturgy** (e.g. Backpack Blessing), **series/sermon images**, and **intro
+videos**. Enumerate with `search_files parentId='<folder>'`.
+- **The Run Down overrides the raw schedule cells.** Late in the week the schedule row is often
+  rough/blank (empty welcome/accompanist; a hymn not yet in the library; a `Cathy/Terri` cell that
+  fuzzy-matches to the wrong L3). Take welcome/accompanist/invitation/special-music/closing from
+  the Run Down's order of worship, and feed `build_week` a corrected CSV row.
+- **Hymn not in the library:** build with `gen_hymn.py`, place `<n> - <Title>.pro` in the
+  swapcache, and register it — `bw.HYMNS += ["<n> - <Title>.pro"]` before `build_week.build(...)`,
+  plus a corrected CSV cell carrying the number so `match_hymn` resolves it. (Don't persist it to
+  `library_inventory.json` — it's a built deck, not a church-library file.)
+- **Non-CTW liturgy:** `gen_ctw.py --title "<Heading>"` (e.g. Backpack Blessing). Deliver
+  standalone (zipped) or insert into the playlist's children's-time slot.
+
+## Media (backgrounds / videos) is NOT edited in the `.pro`
+The playlist is media-less and media refs nest length-prefixed file paths — an in-place byte edit
+corrupts the framing (SwiftProtobuf `error 3`). Swapping the **Welcome-slide series image** or the
+**hook/intro video** is a **manual step in ProPresenter on the church machine** (which holds the
+media): drop the `…-Main.jpg` on the Welcome background; drop the intro video into the Hook slot.
+Always flag these two in delivery. (A schema-aware media-reference editor is the proper long-term
+fix if this needs automating.)

@@ -1,8 +1,12 @@
-"""Format an already-written Call to Worship doc into the CTW ProPresenter deck (flexible length).
+"""Format an already-written responsive liturgy into a ProPresenter deck (flexible length).
 
-FORMATTER, not author: the CTW text is written before the skill runs. This reads the doc,
-pulls the Leader:/People: exchanges + closing All:, and rebuilds the deck to hold exactly the
-needed number of slides — title + one slide per exchange — in correct DISPLAY order.
+Handles the weekly Call to Worship AND other responsive liturgies (children's-time / backpack
+blessings, etc.) — pass `--title` for a custom heading; the default builds the CTW deck.
+
+FORMATTER, not author: the text is written before the skill runs. This reads the doc, pulls the
+Leader:/People: exchanges + closing All:, and rebuilds the deck to hold exactly the needed number
+of slides — title + one slide per exchange — in correct DISPLAY order. A custom `--title` also
+sets the presentation name; the default keeps the CTW deck's name for build_week's swap.
 
 Deck model (reverse-engineered): a presentation's display order is the cue-group (top-level
 fn=12): header fn=1 + repeated fn=2 ref entries, each fn=2 = {fn=1: <cue-uuid>}. The cues
@@ -84,7 +88,7 @@ def _clone_cue(cue):                      # deep copy with EVERY uuid regenerate
         return seen[o]
     return pb.parse(_UUIDB.sub(repl, cue.raw_full))[0]
 
-def _fill_cue(cue, segs):                 # set the cue's first (visible) text box + bold runs
+def _fill_cue(cue, segs, is_title=False): # set the cue's first (visible) text box + bold runs
     hit=[]
     def w(fs, chain):
         if hit: return
@@ -100,7 +104,7 @@ def _fill_cue(cue, segs):                 # set the cue's first (visible) text b
     if deff:
         sz=[c for c in deff[0].msg if c.fn==2]
         if sz: size=struct.unpack('<d', sz[0].value)[0]
-    fs=int(round(size*2)); title = segs[0][1].startswith("Call To Worship")
+    fs=int(round(size*2)); title = is_title
     rtf.value=build_rtf(segs, fs, title=title).encode('utf-8'); rtf.msg=None; rtf.dirty=True
     attr.msg=[c for c in attr.msg if c.fn!=13]
     if not title:
@@ -112,11 +116,11 @@ def _fill_cue(cue, segs):                 # set the cue's first (visible) text b
     attr.dirty=True
     for a in chain: a.dirty=True
 
-def generate(doc_text, liturgist, template=DEFAULT_TPL, out=None):
+def generate(doc_text, liturgist, template=DEFAULT_TPL, out=None, title="Call To Worship"):
     units=parse_ctw(doc_text)
     if not units:
-        raise ValueError("CTW doc has no Leader/People/All exchanges — check the doc / format")
-    title_segs=[(True, "Call To Worship"+(f"\n{liturgist}" if liturgist else ""))]
+        raise ValueError("liturgy doc has no Leader/People/All exchanges — check the doc / format")
+    title_segs=[(True, title+(f"\n{liturgist}" if liturgist else ""))]
 
     root=pb.parse(open(template,'rb').read())
     group=_get(root,12)
@@ -127,7 +131,7 @@ def generate(doc_text, liturgist, template=DEFAULT_TPL, out=None):
     title_cue=ordered[0]
     content_tpl=next(c for c in ordered[1:] if c is not title_cue)   # a content cue to clone
 
-    _fill_cue(title_cue, title_segs)
+    _fill_cue(title_cue, title_segs, is_title=True)
     clones=[]
     for u in units:
         c=_clone_cue(content_tpl); _fill_cue(c, u); clones.append(c)
@@ -144,6 +148,10 @@ def generate(doc_text, liturgist, template=DEFAULT_TPL, out=None):
             if not placed: newroot.extend(new_cues); placed=True
         else:
             newroot.append(f)
+    if title!="Call To Worship":          # custom liturgy: name the presentation for the title
+        for f in newroot:
+            if f.fn==3 and isinstance(f.value,(bytes,bytearray)):
+                f.value=title.encode(); f.msg=None; f.dirty=True
     data=pb.encode(newroot)
     _validate(data, len(units))
     if out: open(out,'wb').write(data)
@@ -167,7 +175,9 @@ def _validate(data, n_units):
 if __name__=="__main__":
     ap=argparse.ArgumentParser()
     ap.add_argument("doc"); ap.add_argument("--liturgist", default="")
+    ap.add_argument("--title", default="Call To Worship",
+                    help='title-slide heading (e.g. "Backpack Blessing"); default is the CTW heading')
     ap.add_argument("--template", default=DEFAULT_TPL); ap.add_argument("--out", required=True)
     a=ap.parse_args()
-    _, n = generate(open(a.doc, encoding='utf-8').read(), a.liturgist, a.template, a.out)
-    print(f"wrote {a.out}: title + {n} content slide(s)  (liturgist={a.liturgist!r})")
+    _, n = generate(open(a.doc, encoding='utf-8').read(), a.liturgist, a.template, a.out, title=a.title)
+    print(f"wrote {a.out}: title + {n} content slide(s)  (title={a.title!r}, liturgist={a.liturgist!r})")

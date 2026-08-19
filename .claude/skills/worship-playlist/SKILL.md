@@ -25,6 +25,13 @@ Run the phases in order. Gates (⛔) require the user before continuing.
   drops trailing columns). Save to a temp CSV.
 - `python3 tools/propresenter/analyze_week.py <csv> "<Date>"` → build plan: template choice,
   each slot's source value, matched file, and **flagged** gaps (empty cell, no match).
+- The week's content usually lives in a **Drive folder** the user points you to: the **Run Down**
+  (AV Production Run Down / Worship Guide), the **CTW doc**, hymn lyrics for anything not in the
+  library, a **children's-time liturgy** (e.g. Backpack Blessing), the series/sermon images, and
+  intro videos. `search_files parentId='<folder>'` to enumerate it; read the docs you need.
+- **The Run Down is authoritative** — the raw schedule cells are often rough or blank this late
+  (empty welcome/accompanist, a hymn not yet in the library, a `Cathy/Terri` cell that fuzzy-
+  matches wrong). Reconcile against the Run Down's order of worship before planning.
 
 ## Phase 2 — Clarify (Q&A)  ⛔
 - For every flag or ambiguity, ask the user with `AskUserQuestion` BEFORE planning:
@@ -45,11 +52,26 @@ Run the phases in order. Gates (⛔) require the user before continuing.
 - **Verify integrity** (the truncation trap): get each file's size via `get_file_metadata`
   and run `tools/propresenter/check_sizes.py <dir> sizes.json`. Re-fetch any short file. A
   truncated `.pro` still parses — size is the only reliable signal.
-- Generate/refresh the CTW `.pro` for the week (see "CTW" below), with the liturgist name
-  (col 12) on the title.
+- Generate/refresh the CTW `.pro` for the week (see "Liturgy decks" below), with the liturgist
+  name (col 12) on the title.
+- **Hymn not in the library** (`analyze_week` shows `NO MATCH`): build it with `gen_hymn.py`
+  (see the hymn skill / `gen_hymn` docstring), drop the `<n> - <Title>.pro` in the swapcache, and
+  **register it so `build_week` matches it** — the matcher reads `data/library_inventory.json`;
+  either add the filename to a patched HYMNS list before calling `build_week.build(...)` (import
+  it and set `bw.HYMNS+=["<n> - <Title>.pro"]`), and feed a corrected CSV row where the closing/
+  opening cell carries the number so `match_hymn` resolves it.
+- **Children's-time liturgy** (Backpack Blessing, etc.): same responsive format as the CTW —
+  `gen_ctw.py <doc.txt> --title "<Heading>" --out "<Heading>.pro"` (see "Liturgy decks").
 - `python3 tools/propresenter/build_week.py --template templates/<standard|communion> \
    --csv <csv> --date "<Date>" --ctw <ctw.pro> --swapcache <dir> --out "<Date>.proplaylist"`
   (add the baptism flag in code for a baptism Sunday so the Baptismal Liturgy is kept).
+  When a slot's cell is rough/blank but the Run Down settles it, feed a **corrected CSV row**
+  (e.g. welcome=Jonathan, accompanist=Kyungrae Cho, invitation=Cathy) so the matcher resolves it.
+- **Media (backgrounds / videos) is NOT edited in the `.pro`.** The playlist is media-less and
+  media references nest length-prefixed paths — an in-place edit corrupts the framing (SwiftProto
+  `error 3`). Swapping the Welcome-slide series image or the hook video is a **manual step in
+  ProPresenter on the church machine** (which holds the media): drop the series `…-Main.jpg` on the
+  Welcome background; drop the intro video in the Hook slot. Flag these two in delivery.
 
 ## Phase 5 — Self-check (you, before sending)
 - The build's `_validate()` must pass (canonical cue UUIDs + every ref bundled) — it raises
@@ -71,22 +93,24 @@ Run the phases in order. Gates (⛔) require the user before continuing.
   spelling) → append to repo `CLAUDE.md`.
 - Commit and push to the working branch.
 
-## CTW = formatter, not author
-The CTW text is written by humans **before** this skill runs (so are hymn picks, liturgist,
-etc.). The skill's job is to *find, match, and lay them out* — and **flag** anything missing
-or unmatchable in planning, never invent it. For the CTW:
-- `gen_ctw.py <doc.txt> --liturgist "<col-12 name>" --out CALL\ TO\ WORSHIP-2.pro` reads the
-  week's CTW doc, pulls the `Leader:` / `People:` exchanges + closing `All:`, and lays them
-  into the deck. Title slide = "Call To Worship" + the liturgist; scripture/theme/rubric stay
-  doc-only.
-- Get the doc text via `read_file_content` on the week's CTW doc (find it by title `CTW
-  <MM/DD>`); save to a `.txt` first. **If the doc isn't found / is empty / doesn't parse →
-  flag it in the plan**, don't proceed on that slot.
-- **Flexible length**: it rebuilds the deck to any number of exchanges — keeps the title cue,
-  clones a content cue (regenerating every UUID) once per exchange, fills each, and rewrites
-  the cue-group display order + cue list. Works by the cue-group's DISPLAY order (storage
-  order differs), and self-validates (round-trip, canonical/unique cue UUIDs, no dangling
-  refs). Verified for 2 / 4 / 6 exchanges.
+## Liturgy decks = formatter, not author
+The liturgy text is written by humans **before** this skill runs (so are hymn picks, liturgist,
+etc.). The skill's job is to *find, match, and lay them out* — and **flag** anything missing or
+unmatchable, never invent it. One tool builds every responsive liturgy — the CTW and any
+children's-time / blessing liturgy:
+- `gen_ctw.py <doc.txt> --liturgist "<col-12 name>" --out CALL\ TO\ WORSHIP-2.pro` — the weekly
+  **CTW** (default title "Call To Worship"; keeps the `CALL TO WORSHIP-2` name so `build_week`
+  swaps it).
+- `gen_ctw.py <doc.txt> --title "Backpack Blessing" --liturgist "You Got This!" --out "Backpack
+  Blessing.pro"` — any other **responsive liturgy** (custom heading; names the presentation for
+  the title). Feed only the call-and-response the congregation reads; the leader's narrative and
+  spoken prayers stay off-screen unless asked.
+- It pulls `Leader:` / `People:` exchanges + a closing `All:`. Get the doc via `read_file_content`
+  (find by title, e.g. `CTW <MM/DD>` or the week folder); save a `.txt` first. **If the doc isn't
+  found / empty / doesn't parse → flag it**, don't proceed on that slot.
+- **Flexible length**: rebuilds to any number of exchanges — keeps the title cue, clones a content
+  cue (regenerating every UUID) per exchange, fills each, rewrites the cue-group display order +
+  cue list, and self-validates (round-trip, canonical/unique UUIDs, no dangling refs).
 
 ## Toolbelt (all under tools/propresenter/)
 - `analyze_week.py` — pre-build plan + gap flags.
@@ -94,8 +118,11 @@ or unmatchable in planning, never invent it. For the CTW:
   retitle, validate, bundle in PP's zip dialect.
 - `match_library.py` — hymn (UMH/TFWS/W&S # or title) and name→L3 matching.
 - `slot_map.py` — classify template items (cue/fixed/swap).
-- `gen_ctw.py` — CTW doc → CTW deck (formatter; ≤4 exchanges, flags overflow).
+- `gen_ctw.py` — responsive-liturgy deck (CTW or, with `--title`, any children's/blessing
+  liturgy); flexible length, self-validating.
+- `gen_hymn.py` — lyrics → hymn deck to the church spec (title + 4-line stanzas @ 55pt) for a
+  hymn not in the library; register its filename with `build_week` (see Phase 4).
 - `ppzip.py` — ProPresenter ZIP64 writer (required; stock zip won't import).
 - `check_sizes.py` — download-truncation guard.
-- `pb.py` — protobuf read/encode (lenient parser; see UUID gotcha).
-- `gen_ctw_june14_poc.py` — superseded by `gen_ctw.py`; kept for reference only.
+- `pb.py` — protobuf read/encode (lenient parser; see UUID/framing gotchas in CONVENTIONS).
+- `templates/{standard,communion}` + `templates/hymn-donor.pro`; `data/library_inventory.json`.
