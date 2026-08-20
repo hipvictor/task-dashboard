@@ -3266,3 +3266,20 @@
   .route-bar .route-btn { min-height: 44px; padding: 0.55rem 0.8rem; }
   .route-bar { gap: 0.5rem; flex-wrap: wrap; }
 }
+
+
+/* ── Archived tab ─────────────────────────────────────────────────────────── */
+.arch-blurb { color: var(--text-dim, #8a8a8a); font-size: 13px; margin: 0 0 12px; }
+.arch-item { display: flex; flex-direction: column; gap: 4px; }
+.arch-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.arch-sender { font-weight: 600; font-size: 13px; }
+.arch-when { font-size: 11px; color: var(--text-dim, #8a8a8a); white-space: nowrap; }
+.arch-subject { font-size: 14px; }
+.arch-summary { font-size: 12px; color: var(--text-dim, #8a8a8a); line-height: 1.45; }
+.arch-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; }
+.arch-why { font-size: 11px; color: #c4956a; }
+.arch-undo { font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+             border: 1px solid #c4956a; background: transparent; color: #c4956a; }
+.arch-undo:hover { background: #c4956a; color: #fff; }
+.arch-undo:disabled { opacity: .5; cursor: default; }
+.arch-restored { font-size: 11px; color: var(--text-dim, #8a8a8a); font-style: italic; }

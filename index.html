@@ -62,6 +62,7 @@
     <button class="tab-btn" onclick="switchView('review')">Proposals</button>
     <button class="tab-btn" onclick="switchView('email')">Email</button>
     <button class="tab-btn" onclick="switchView('lists')">Lists</button>
+    <button class="tab-btn" onclick="switchView('archived')">Archived</button>
   </div>
   <div class="search-bar" id="search-bar"><input type="text" class="search-input" id="search-input" placeholder="Search tasks..." oninput="handleSearchInput(this.value)" onkeydown="if(event.key==='Escape')hideSearch()"></div>
   <div id="tasks-view" class="view active main">
@@ -253,6 +254,29 @@
         <button class="select-toggle" id="lists-showall-toggle" onclick="toggleListsShowAll()">Show all</button>
         <button class="refresh-btn" onclick="loadLists()" title="Refresh">🔄</button>
       </div>
+
+  <div id="archived-view" class="view email-view">
+    <div class="view-header">
+      <h2>Archived</h2>
+      <span class="email-pending-note" id="arch-note"></span>
+    </div>
+    <p class="arch-blurb">Archive candidates clear themselves. Nothing here needed a decision from you &mdash; scan and pull back anything that shouldn't have gone.</p>
+    <input type="text" class="view-search" id="arch-search" placeholder="Search archived&hellip;" oninput="handleArchSearch(this.value)">
+    <div class="email-section">
+      <div class="section-header"><span>Worth a look</span><span class="section-count" id="arch-flagged-count">0</span></div>
+      <div id="arch-flagged" class="email-list"></div>
+    </div>
+    <div class="email-section">
+      <div class="section-header"><span>Gleaned first</span><span class="section-count" id="arch-gleaned-count">0</span></div>
+      <div id="arch-gleaned" class="email-list"></div>
+    </div>
+    <div class="email-section">
+      <div class="section-header" style="cursor:pointer" onclick="toggleArchRoutine()">
+        <span id="arch-routine-toggle">&#9656; Routine</span><span class="section-count" id="arch-routine-count">0</span>
+      </div>
+      <div id="arch-routine" class="email-list" style="display:none"></div>
+    </div>
+  </div>
     </div>
     <div class="lists-intro">One card per person or meeting. <strong>To raise</strong> is what you bring them — done when said. <strong>Waiting on</strong> is what they owe you — done when delivered.</div>
     <input type="text" class="view-search" id="lists-search" placeholder="Jump to a person or meeting…" oninput="handleListsSearch(this.value)">
@@ -318,6 +342,7 @@
   <div class="shortcut-row"><span>Proposals tab</span><span class="kbd-hint">4</span></div>
   <div class="shortcut-row"><span>Email tab</span><span class="kbd-hint">5</span></div>
   <div class="shortcut-row"><span>Lists tab</span><span class="kbd-hint">6</span></div>
+  <div class="shortcut-row"><span>Archived tab</span><span class="kbd-hint">7</span></div>
   <div class="shortcut-row"><span>Close / Cancel</span><span class="kbd-hint">Esc</span></div>
   <div class="shortcut-row"><span>Show this help</span><span class="kbd-hint">?</span></div>
 </div>

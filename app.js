@@ -130,9 +130,9 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === '/') {
     e.preventDefault();
     toggleSearch();
-  } else if (e.key >= '1' && e.key <= '6') {
+  } else if (e.key >= '1' && e.key <= '7') {
     e.preventDefault();
-    const views = ['tasks', 'home', 'briefing', 'review', 'email', 'lists'];
+    const views = ['tasks', 'home', 'briefing', 'review', 'email', 'lists', 'archived'];
     const view = views[parseInt(e.key) - 1];
     if (view) switchView(view);
   }
@@ -293,13 +293,15 @@ function setTheme(theme) {
       switchView('email');
     } else if (location.hash === '#lists') {
       switchView('lists');
+    } else if (location.hash === '#archived') {
+      switchView('archived');
     }
   }
 
   // ── View Switching ──
   let taskDomain = 'work'; // Tasks tab = work, Home tab = home (both reuse the tasks-view)
   function switchView(viewName) {
-    ['tasks-view', 'briefing-view', 'review-view', 'email-view', 'lists-view']
+    ['tasks-view', 'briefing-view', 'review-view', 'email-view', 'lists-view', 'archived-view']
       .forEach(v => document.getElementById(v).classList.remove('active'));
     const btns = document.querySelectorAll('.tab-btn');
     btns.forEach(btn => btn.classList.remove('active'));
@@ -326,6 +328,10 @@ function setTheme(theme) {
       document.getElementById('lists-view').classList.add('active');
       btns[5].classList.add('active');
       loadLists();
+    } else if (viewName === 'archived') {
+      document.getElementById('archived-view').classList.add('active');
+      btns[6].classList.add('active');
+      loadArchiveLog();
     }
   }
 
@@ -2659,6 +2665,93 @@ function setTheme(theme) {
   }
 
   function toggleCommitted() { showCommitted = !showCommitted; renderEmailQueue(); }
+
+
+  // ── Archived ──────────────────────────────────────────────────────────────
+  // Archive candidates now clear themselves (Jonathan, 2026-08-20). Tier 3/4 never become
+  // candidates, so nothing pastoral can land here by design; the residual risk is
+  // misclassification, which is what this scan is for.
+  let archRows = [], archSearch = '';
+
+  async function loadArchiveLog() {
+    const f = document.getElementById('arch-flagged');
+    f.innerHTML = '<div class="email-empty">Loading&hellip;</div>';
+    try {
+      const since = new Date(Date.now() - 14 * 864e5).toISOString();
+      const { data, error } = await sb.from('archive_log')
+        .select('*').gte('archived_at', since).order('archived_at', { ascending: false });
+      if (error) throw error;
+      archRows = data || [];
+      renderArchiveLog();
+    } catch (e) {
+      console.error('archive log', e);
+      f.innerHTML = '<div class="email-empty">Error loading archive log: ' + escapeHTML(e.message) + '</div>';
+    }
+  }
+
+  function handleArchSearch(v) { archSearch = (v || '').toLowerCase(); renderArchiveLog(); }
+
+  function toggleArchRoutine() {
+    const el = document.getElementById('arch-routine');
+    const tog = document.getElementById('arch-routine-toggle');
+    const open = el.style.display !== 'none';
+    el.style.display = open ? 'none' : 'block';
+    tog.innerHTML = (open ? '▸' : '▾') + ' Routine';
+  }
+
+  function archCard(r) {
+    const when = r.archived_at ? new Date(r.archived_at).toLocaleDateString(undefined,
+                   { month: 'short', day: 'numeric' }) : '';
+    const why = r.flag_reason ? '<span class="arch-why">' + escapeHTML(r.flag_reason) + '</span>' : '';
+    const summ = r.summary_short ? '<div class="arch-summary">' + escapeHTML(r.summary_short) + '</div>' : '';
+    const restored = r.unarchived_at
+      ? '<span class="arch-restored">restored</span>'
+      : '<button class="arch-undo" onclick="unarchive(\'' + r.id + '\')">Unarchive</button>';
+    return '<div class="email-item arch-item" id="arch-' + r.id + '">' +
+             '<div class="arch-top">' +
+               '<span class="arch-sender">' + escapeHTML(r.sender || 'Unknown') + '</span>' +
+               '<span class="arch-when">' + when + '</span>' +
+             '</div>' +
+             '<div class="arch-subject">' + escapeHTML(r.subject || '(no subject)') + '</div>' +
+             summ + '<div class="arch-foot">' + why + restored + '</div>' +
+           '</div>';
+  }
+
+  function renderArchiveLog() {
+    const match = r => !archSearch ||
+      ((r.sender || '') + ' ' + (r.subject || '') + ' ' + (r.summary_short || ''))
+        .toLowerCase().includes(archSearch);
+    const groups = { flagged: [], gleaned: [], routine: [] };
+    archRows.filter(match).forEach(r => {
+      const g = r.log_group === 'restored' ? 'flagged' : (groups[r.log_group] ? r.log_group : 'routine');
+      groups[g].push(r);
+    });
+    const put = (id, rows, empty) => {
+      document.getElementById(id).innerHTML = rows.length
+        ? rows.map(archCard).join('')
+        : '<div class="email-empty">' + empty + '</div>';
+      document.getElementById(id + '-count').textContent = rows.length;
+    };
+    put('arch-flagged', groups.flagged, 'Nothing needing your eyes.');
+    put('arch-gleaned', groups.gleaned, 'No newsletters archived.');
+    put('arch-routine', groups.routine, 'No routine mail archived.');
+    document.getElementById('arch-note').textContent =
+      archRows.length ? archRows.length + ' archived in the last 14 days' : '';
+  }
+
+  async function unarchive(id) {
+    const card = document.getElementById('arch-' + id);
+    const btn = card && card.querySelector('.arch-undo');
+    if (btn) { btn.disabled = true; btn.textContent = 'Restoring&hellip;'; }
+    try {
+      const { error } = await sb.rpc('request_unarchive', { p_id: id });
+      if (error) throw error;
+      if (btn) btn.outerHTML = '<span class="arch-restored">back on the next sweep</span>';
+    } catch (e) {
+      console.error('unarchive', e);
+      if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+    }
+  }
 
   async function loadEmailQueue() {
     const list = document.getElementById('email-queue-list');
