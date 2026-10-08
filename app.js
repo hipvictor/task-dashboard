@@ -1320,6 +1320,11 @@ function setTheme(theme) {
   function renderBenchAgendaRollup() {
     const bar = document.getElementById('bench-agenda-rollup');
     if (!bar) return;
+    // Lists stay out of the task view: items wait on their person/meeting card in
+    // the Lists tab until the next conversation. A list item with a due date within
+    // 2 days is moved to the bench by the database, and shows there as a normal row.
+    bar.innerHTML = '';
+    return;
 
     // allTasks is the live status source; agendaItems can lag a pool move.
     const liveStatus = new Map(allTasks.map(t => [t.id, t.status]));
@@ -2160,7 +2165,7 @@ function setTheme(theme) {
       }
       // If defer_date was cleared and task is deferred, move to inbox
       if (!defer_date && task && task.status === 'deferred') {
-        update.status = 'inbox';
+        update.status = 'shelf';
       }
 
       const { error } = await sb
@@ -3100,13 +3105,13 @@ function setTheme(theme) {
     if (!name) { closeQuickCapture(); return; }
     i.value = '';
     closeQuickCapture();
-    showToast('Added to Proposals');
+    showToast('Added to Shelf');
     try {
+      // Tasks you create yourself are already past the proposal gate.
       const { error } = await sb.from('tasks')
-        .insert({ name, status: 'proposed', domain: 'work', source_note: 'quick-capture', tags: ['quick'] });
+        .insert({ name, status: 'shelf', domain: 'work', source_note: 'quick-capture', tags: ['quick'] });
       if (error) { showToast('Error: ' + error.message, { type: 'error' }); return; }
-      // If Proposals is open, refresh so it shows immediately.
-      if (document.getElementById('review-view').classList.contains('active')) loadReview();
+      await loadTasks();
     } catch (e) { showToast('Error: ' + e.message, { type: 'error' }); }
   }
 
