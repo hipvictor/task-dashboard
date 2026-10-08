@@ -3049,6 +3049,7 @@
       color: var(--text);
     }
     .checkback-input:focus { outline: none; }
+    .list-due-input { border-color: var(--border, #3a3632); max-width: 9.5rem; }
 
     /* ── Bench roll-up (Tasks tab) ── */
     /* One line per person/meeting list, above the bench rows. */

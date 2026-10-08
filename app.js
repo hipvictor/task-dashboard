@@ -1098,8 +1098,12 @@ function setTheme(theme) {
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
+    const dueInput = document.getElementById('list-due-' + targetId);
+    const due = dueInput && dueInput.value ? dueInput.value : null;
     input.value = '';
+    if (dueInput) dueInput.value = '';
     const { error } = await sb.from('tasks').insert({
+      due_date: due,
       name: text,
       status: relation === 'waiting_on' ? 'delegate' : 'agenda',
       relation: relation,
@@ -1108,7 +1112,9 @@ function setTheme(theme) {
       capture_notes: text
     });
     if (error) { showToast('Add failed: ' + error.message, { type: 'error' }); return; }
-    showToast(relation === 'waiting_on' ? 'Added to waiting-on' : 'Added to list');
+    showToast(due && daysUntil(due) <= 2
+      ? 'Due soon — added to your bench'
+      : (relation === 'waiting_on' ? 'Added to waiting-on' : 'Added to list'));
     await loadLists();
     await loadTasks();
   }
@@ -1119,6 +1125,8 @@ function setTheme(theme) {
         <input type="text" id="list-add-${targetId}" class="list-add-input"
                placeholder="Add an item…"
                onkeydown="if(event.key==='Enter'){event.preventDefault();addToList('${targetId}','agenda');}">
+        <input type="date" id="list-due-${targetId}" class="checkback-input list-due-input"
+               title="Optional due date — within 2 days, it goes to your bench">
         <button class="route-btn" onclick="addToList('${targetId}','agenda')">To raise</button>
         <button class="route-btn" onclick="addToList('${targetId}','waiting_on')">Waiting on</button>
       </div>`;
@@ -1200,6 +1208,8 @@ function setTheme(theme) {
         <div class="route-bar">
           ${placement}
           <button class="route-btn" onclick="moveListItem('${item.task_id}','done')">→ Done</button>
+          <button class="route-btn" onclick="openListDuePicker(event, '${item.task_id}')">${item.due_date ? 'Due…' : '+ Due date'}</button>
+          ${item.due_date ? `<button class="route-btn" onclick="updateListDue('${item.task_id}', null)">Clear due</button>` : ''}
           ${checkBack}
         </div>
       </div>
@@ -1273,6 +1283,36 @@ function setTheme(theme) {
     input.onkeydown = (e) => { if (e.key === 'Escape') input.remove(); };
     bar.appendChild(input);
     input.focus();
+  }
+
+  // Due date on a list item. Within 2 days, the database moves it to the bench.
+  function openListDuePicker(event, taskId) {
+    event.stopPropagation();
+    const item = agendaItems.find(i => i.task_id === taskId);
+    if (!item) return;
+    const bar = document.querySelector(`.list-item[data-task-id="${taskId}"] .route-bar`);
+    if (!bar) return;
+    const existing = bar.querySelector('.list-due-picker');
+    if (existing) { existing.focus(); return; }
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.className = 'checkback-input list-due-picker';
+    input.value = item.due_date || '';
+    input.onclick = (e) => e.stopPropagation();
+    input.onchange = () => { if (input.value) updateListDue(taskId, input.value); };
+    input.onkeydown = (e) => { if (e.key === 'Escape') input.remove(); };
+    bar.appendChild(input);
+    input.focus();
+  }
+
+  async function updateListDue(taskId, value) {
+    const { error } = await sb.from('tasks').update({ due_date: value }).eq('id', taskId);
+    if (error) { showToast(`Error: ${error.message}`, { type: 'error' }); return; }
+    showToast(!value ? 'Due date cleared'
+      : daysUntil(value) <= 2 ? `Due ${formatDate(value)} — moved to your bench`
+      : `Due ${formatDate(value)}`);
+    await loadLists();
+    await loadTasks();
   }
 
   function clearCheckBack(taskId) {
